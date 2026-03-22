@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>OvniBar</title>
+<script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js"></script>
+<style>
+:root{--bg:#f0f2f5;--surface:#fff;--surface2:#f8f9fa;--border:#e0e0e0;--text:#1a1a2e;--text2:#666;--text3:#999;--primary:#6c5ce7;--primary-light:#6c5ce722;--success:#00b894;--success-light:#00b89422;--danger:#ff7675;--danger-light:#ff767522;--warn:#fdcb6e;--warn-dark:#b7860b;--shadow:0 1px 4px rgba(0,0,0,.08)}
+[data-theme="dark"]{--bg:#0f0f1a;--surface:#1a1a2e;--surface2:#16213e;--border:#2d2d4e;--text:#f0f0ff;--text2:#aaa;--text3:#666;--shadow:0 1px 4px rgba(0,0,0,.4)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:sans-serif;background:var(--bg);min-height:100vh;color:var(--text);transition:background .3s,color .3s}
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a1a2e,#16213e)}
+.login-box{background:var(--surface);border-radius:20px;padding:40px;width:100%;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,.3);text-align:center}
+.login-box h2{font-size:26px;margin-bottom:6px;color:var(--text)}
+.login-box p{color:var(--text3);font-size:13px;margin-bottom:28px}
+.btn-google{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:14px;border-radius:12px;border:2px solid var(--border);background:var(--surface);cursor:pointer;font-size:16px;font-weight:600;color:var(--text)}
+.btn-google img{width:22px}
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;font-size:16px;gap:12px}
+.spinner{width:40px;height:40px;border:4px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.header{background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;position:sticky;top:0;z-index:50}
+.header h2{font-size:17px;margin:0}
+.header-right{display:flex;gap:8px;align-items:center}
+.user-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);padding:6px 12px;border-radius:20px;font-size:12px;cursor:pointer;border:none;color:#fff}
+.user-chip img{width:24px;height:24px;border-radius:50%}
+.dark-toggle{background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 10px;border-radius:20px;cursor:pointer;font-size:16px}
+.tabs{display:flex;gap:4px;padding:8px;overflow-x:auto;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:52px;z-index:40;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:10px 16px;border-radius:10px;border:none;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap;background:var(--surface2);color:var(--text2);transition:all .2s}
+.tab.active{background:var(--primary);color:#fff}
+.content{padding:12px;max-width:1000px;margin:0 auto}
+.card{background:var(--surface);border-radius:12px;padding:14px;margin-bottom:12px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.card-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-size:14px;font-weight:700}
+.mesas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+.mesa-card{border-radius:14px;padding:18px 12px;text-align:center;cursor:pointer;border:2px solid transparent;transition:all .2s;background:var(--surface2)}
+.mesa-card.libre{border-color:var(--success-light)}
+.mesa-card.libre:hover{border-color:var(--success);transform:scale(1.02)}
+.mesa-card.ocupada{border-color:var(--primary-light);background:var(--primary-light)}
+.mesa-card.ocupada:hover{border-color:var(--primary);transform:scale(1.02)}
+.mesa-card.pagando{border-color:#fdcb6e88;background:#fdcb6e11}
+.mesa-num{font-size:32px;font-weight:900;margin-bottom:6px;color:var(--text)}
+.mesa-badge{font-size:11px;font-weight:700;border-radius:10px;padding:3px 10px;display:inline-block}
+.badge-green{background:var(--success-light);color:var(--success)}
+.badge-purple{background:var(--primary-light);color:var(--primary)}
+.badge-yellow{background:#fdcb6e33;color:var(--warn-dark)}
+.badge-red{background:#ff767522;color:var(--danger)}
+.mesa-total{font-size:14px;font-weight:800;color:var(--primary);margin-top:6px}
+.mesa-info{font-size:10px;color:var(--text3);margin-top:2px}
+.comanda-wrap{display:grid;grid-template-columns:1fr 320px;gap:12px}
+@media(max-width:680px){.comanda-wrap{grid-template-columns:1fr}}
+.carta-cats{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px;scrollbar-width:none}
+.carta-cats::-webkit-scrollbar{display:none}
+.cat-btn{padding:8px 16px;border-radius:20px;border:none;cursor:pointer;font-size:13px;font-weight:600;background:var(--surface2);color:var(--text2);white-space:nowrap;transition:all .2s}
+.cat-btn.active{background:var(--primary);color:#fff}
+.carta-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px}
+@media(max-width:500px){.carta-grid{grid-template-columns:repeat(3,1fr)}}
+.prod-btn{background:var(--surface2);border:2px solid var(--border);border-radius:12px;padding:12px 8px;cursor:pointer;text-align:center;transition:all .15s;user-select:none}
+.prod-btn:active{transform:scale(0.94);background:var(--primary-light);border-color:var(--primary)}
+.prod-emoji{font-size:26px;margin-bottom:4px}
+.prod-nombre{font-size:11px;font-weight:700;color:var(--text);line-height:1.2;margin-bottom:3px}
+.prod-precio{font-size:12px;color:var(--primary);font-weight:800}
+.ticket{background:var(--surface);border-radius:12px;padding:14px;border:1px solid var(--border)}
+@media(min-width:681px){.ticket{position:sticky;top:110px}}
+.ticket-title{font-size:15px;font-weight:800;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;color:var(--text)}
+.ticket-item{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.ti-info{flex:1}
+.ti-name{font-weight:600;color:var(--text)}
+.ti-note{font-size:11px;color:var(--text3);font-style:italic;margin-top:2px}
+.ti-price{color:var(--primary);font-weight:800;font-size:13px;min-width:70px;text-align:right;padding-top:2px}
+.ticket-qty{display:flex;align-items:center;gap:6px;margin-top:4px}
+.qty-btn{width:26px;height:26px;border-radius:50%;border:none;cursor:pointer;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.qty-minus{background:#ff767522;color:var(--danger)}
+.qty-plus{background:var(--success-light);color:var(--success)}
+.note-btn{background:none;border:1px dashed var(--border);border-radius:6px;padding:2px 6px;font-size:10px;color:var(--text3);cursor:pointer}
+.ticket-total{display:flex;justify-content:space-between;padding:12px 0 0;font-size:17px;font-weight:900;color:var(--text)}
+.ticket-empty{text-align:center;color:var(--text3);padding:30px 0;font-size:13px}
+.btn{padding:10px 18px;border:none;border-radius:10px;cursor:pointer;font-weight:700;font-size:14px;transition:all .15s}
+.btn:active{transform:scale(0.97)}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-success{background:var(--success);color:#fff}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-warn{background:var(--warn);color:#333}
+.btn-dark{background:#2d3436;color:#fff}
+.btn-ghost{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.btn-full{width:100%;padding:14px;font-size:15px;margin-top:8px;border-radius:12px}
+.btn-sm{padding:5px 10px;font-size:12px;border-radius:8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--primary);color:#fff;padding:9px 10px;text-align:left;white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text)}
+tr:nth-child(even) td{background:var(--surface2)}
+.tfoot td{background:var(--primary);color:#fff;font-weight:800}
+.wrap{overflow-x:auto}
+.badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;display:inline-block}
+.role-admin{background:var(--primary-light);color:var(--primary)}
+.role-cajero{background:var(--success-light);color:var(--success)}
+.role-inventario{background:#fdcb6e33;color:var(--warn-dark)}
+.role-supervisor{background:#fd79a822;color:#e84393}
+.role-mesero{background:#0984e322;color:#0984e3}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;z-index:100;padding:0}
+@media(min-width:500px){.modal-overlay{align-items:center;padding:16px}}
+.modal{background:var(--surface);border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:480px;box-shadow:0 -8px 32px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto}
+@media(min-width:500px){.modal{border-radius:16px}}
+.modal h3{margin-bottom:16px;font-size:18px;color:var(--text)}
+.modal input,.modal select,.modal textarea{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);font-size:14px;margin-bottom:12px;background:var(--surface2);color:var(--text)}
+.modal .btns{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+.kpi-box{background:var(--surface);border-radius:12px;padding:14px;border:2px solid var(--border)}
+.kpi-box small{font-size:11px;color:var(--text3);display:block;margin-bottom:4px}
+.kpi-box b{font-size:20px;font-weight:900;display:block}
+.top-item{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-size:13px;color:var(--text)}
+.sync-indicator{font-size:11px;padding:3px 8px;border-radius:10px;font-weight:600}
+.sync-ok{background:var(--success-light);color:var(--success)}
+.sync-loading{background:#fdcb6e33;color:var(--warn-dark)}
+.sync-error{background:var(--danger-light);color:var(--danger)}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.9);display:flex;align-items:center;justify-content:center;z-index:200;cursor:pointer}
+.lightbox img{max-width:90vw;max-height:90vh;border-radius:12px}
+@media print{.no-print{display:none!important}}
+</style>
+</head>
+<body>
+<div id="loadingScreen" class="loading">
+  <div class="spinner"></div>
+  <span>Cargando OvniBar...</span>
+</div>
+<div id="loginScreen" class="login-wrap" style="display:none">
+  <div class="login-box">
+    <div style="font-size:56px;margin-bottom:12px">🍺</div>
+    <h2>Ovni Club</h2>
+    <p>Sistema de Bar — Inicia sesión para continuar</p>
+    <button class="btn-google" onclick="loginConGoogle()">
+      <img src="https://www.google.com/favicon.ico"/> Continuar con Google
+    </button>
+    <p style="margin-top:16px;font-size:11px;color:#aaa">Solo usuarios autorizados</p>
+  </div>
+</div>
+<div id="noAccessScreen" style="display:none">
+  <div class="login-wrap">
+    <div class="login-box">
+      <div style="font-size:48px;margin-bottom:12px">🚫</div>
+      <h2>Sin acceso</h2>
+      <p style="margin-bottom:12px;color:var(--text2)">Tu cuenta no está autorizada.</p>
+      <p id="noAccessEmail" style="font-size:12px;color:var(--text3);margin-bottom:20px"></p>
+      <button class="btn btn-primary btn-full" onclick="doLogout()">Cerrar sesión</button>
+    </div>
+  </div>
+</div>
+<div id="modalNota" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <h3>📝 Nota para el item</h3>
+    <textarea id="notaTexto" placeholder="Ej: sin hielo, extra limón..." rows="3"></textarea>
+    <div class="btns">
+      <button class="btn btn-ghost" onclick="cerrarModal('modalNota')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarNota()">Guardar</button>
+    </div>
+  </div>
+</div>
+<div id="modalCobrar" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <h3>💰 Cobrar Mesa <span id="cobrarMesaNum"></span></h3>
+    <div id="cobrarResumen" style="margin-bottom:14px"></div>
+    <select id="cobrarMetodo">
+      <option>Efectivo</option><option>Nequi</option><option>Daviplata</option><option>Bancolombia</option><option>Mixto</option>
+    </select>
+    <div style="margin-bottom:12px">
+      <label style="font-size:12px;color:var(--text3);display:block;margin-bottom:6px">🧾 Comprobante (opcional)</label>
+      <input type="file" id="cobrarComp" accept="image/*" style="font-size:13px"/>
+    </div>
+    <div class="btns">
+      <button class="btn btn-ghost no-print" onclick="imprimirCuenta()">🖨️ Imprimir</button>
+      <button class="btn btn-ghost" onclick="cerrarModal('modalCobrar')">Cancelar</button>
+      <button class="btn btn-success" onclick="confirmarCobro()">✅ Cobrar</button>
+    </div>
+  </div>
+</div>
+<div id="modalProdCarta" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <h3 id="modalProdCartaTitulo">➕ Producto en carta</h3>
+    <input id="cpNombre" placeholder="Nombre del producto"/>
+    <select id="cpCategoria">
+      <option>🍺 Cervezas</option><option>🥃 Licores</option>
+      <option>🍹 Cócteles</option><option>🥤 Sin alcohol</option><option>⭐ Especiales</option>
+    </select>
+    <input id="cpPrecio" type="number" placeholder="Precio (COP)"/>
+    <input id="cpEmoji" placeholder="Emoji (ej: 🍺)"/>
+    <div class="btns">
+      <button class="btn btn-ghost" onclick="cerrarModal('modalProdCarta')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarProdCarta()">Guardar</button>
+    </div>
+  </div>
+</div>
+<div id="modalUsuario" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <h3 id="modalUsuTitulo">➕ Agregar Usuario</h3>
+    <input id="mEmail" placeholder="Correo Gmail" type="email"/>
+    <input id="mNombre" placeholder="Nombre completo"/>
+    <select id="mRol">
+      <option value="mesero">Mesero — Solo mesas y pedidos</option>
+      <option value="cajero">Cajero — Mesas y caja</option>
+      <option value="inventario">Bodega — Solo inventario</option>
+      <option value="supervisor">Supervisor — Todo menos admin</option>
+      <option value="admin">Administrador — Acceso total</option>
+    </select>
+    <p id="mRolDesc" style="font-size:12px;color:var(--text3);margin-bottom:12px"></p>
+    <div class="btns">
+      <button class="btn btn-ghost" onclick="cerrarModal('modalUsuario')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarUsuario()">Guardar</button>
+    </div>
+  </div>
+</div>
+<div id="modalMov" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <h3>📦 Movimiento de inventario</h3>
+    <p id="movProdLabel" style="font-weight:800;color:var(--primary);margin-bottom:12px"></p>
+    <select id="movTipo" style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);font-size:14px;margin-bottom:12px;background:var(--surface2);color:var(--text)">
+      <option value="entrada">📥 Entrada (compra / reposición)</option>
+      <option value="salida">📤 Salida (ajuste / pérdida)</option>
+    </select>
+    <input id="movCant" type="number" placeholder="Cantidad" min="1"/>
+    <input id="movNota" placeholder="Nota (opcional)"/>
+    <div class="btns">
+      <button class="btn btn-ghost" onclick="cerrarModal('modalMov')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarMov()">Registrar</button>
+    </div>
+  </div>
+</div>
+<div id="modalInvProd" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <h3 id="invProdTitulo">➕ Producto en inventario</h3>
+    <input id="ipNombre" placeholder="Nombre del producto"/>
+    <div style="display:flex;gap:8px">
+      <input id="ipStock" type="number" placeholder="Stock inicial" style="margin-bottom:12px"/>
+      <input id="ipMinimo" type="number" placeholder="Stock mínimo" style="margin-bottom:12px"/>
+    </div>
+    <div class="btns">
+      <button class="btn btn-ghost" onclick="cerrarModal('modalInvProd')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarInvProd()">Guardar</button>
+    </div>
+  </div>
+</div>
+<div id="lightbox" class="lightbox" style="display:none" onclick="this.style.display='none'">
+  <img id="lightboxImg"/>
+</div>
+<div id="appScreen" style="display:none">
+  <div class="header">
+    <div>
+      <h2>🍺 Ovni Club</h2>
+      <p id="headerSub" style="font-size:11px;opacity:.7;margin-top:1px"></p>
+    </div>
+    <div class="header-right">
+      <span id="syncBadge" class="sync-indicator sync-ok">🟢 Sync</span>
+      <button class="dark-toggle" onclick="toggleDark()">🌙</button>
+      <button class="user-chip" onclick="doLogout()" id="userChip">👤 Salir</button>
+    </div>
+  </div>
+  <div class="tabs" id="tabsBar"></div>
+  <div id="tab0" class="content" style="display:none"></div>
+  <div id="tab1" class="content" style="display:none"></div>
+  <div id="tab2" class="content" style="display:none"></div>
+  <div id="tab3" class="content" style="display:none"></div>
+  <div id="tab4" class="content" style="display:none"></div>
+  <div id="tab5" class="content" style="display:none"></div>
+</div>
+<script>
+var AUTH0_DOMAIN="dev-4jhjcq0fv26fns0i.us.auth0.com";
+var AUTH0_CLIENT="Ced9QqXVjPQVhG6lFxNwtVl7F4XsmfEw";
+
+var PERMISOS={
+  admin:     {mesas:true,caja:true,inventario:true,cierre:true,carta:true,usuarios:true,eliminar:true,exportar:true},
+  supervisor:{mesas:true,caja:true,inventario:true,cierre:true,carta:true,usuarios:false,eliminar:false,exportar:true},
+  cajero:    {mesas:true,caja:true,inventario:false,cierre:false,carta:false,usuarios:false,eliminar:false,exportar:false},
+  mesero:    {mesas:true,caja:false,inventario:false,cierre:false,carta:false,usuarios:false,eliminar:false,exportar:false},
+  inventario:{mesas:false,caja:false,inventario:true,cierre:false,carta:false,usuarios:false,eliminar:false,exportar:false}
+};
+var ROL_DESC={admin:"Acceso total.",supervisor:"Todo excepto gestión de usuarios.",cajero:"Mesas, comandas y caja.",mesero:"Solo toma y gestiona pedidos.",inventario:"Solo inventario."};
+var ROL_COLOR={admin:"role-admin",supervisor:"role-supervisor",cajero:"role-cajero",mesero:"role-mesero",inventario:"role-inventario"};
+var ROL_LABEL={admin:"Admin",supervisor:"Supervisor",cajero:"Cajero",mesero:"Mesero",inventario:"Bodega"};
+
+var auth0Client=null,usuarioActual=null,perms={};
+var mesas=[],carta=[],inventario=[],usuarios={};
+var mesaActiva=null,editandoEmail=null,editandoProdCartaIdx=null,editandoInvIdx=null,movInvIdx=null,mesaCobrar=null;
+var catActiva="todas",notaItemIdx=null;
+var syncInterval=null;
+
+function fmt(n){return new Intl.NumberFormat("es-CO",{style:"currency",currency:"COP",maximumFractionDigits:0}).format(n);}
+function hora(){return new Date().toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit"});}
+function hoy(){return new Date().toISOString().split("T")[0];}
+
+function toggleDark(){
+  var isDark=document.documentElement.getAttribute("data-theme")==="dark";
+  document.documentElement.setAttribute("data-theme",isDark?"":"dark");
+  localStorage.setItem("theme",isDark?"light":"dark");
+}
+(function(){
+  var t=localStorage.getItem("theme")||"dark";
+  document.documentElement.setAttribute("data-theme",t);
+})();
+
+function setSyncStatus(s){
+  var el=document.getElementById("syncBadge");
+  if(!el)return;
+  if(s==="ok"){el.className="sync-indicator sync-ok";el.textContent="🟢 Sync";}
+  else if(s==="loading"){el.className="sync-indicator sync-loading";el.textContent="🔄 Sync...";}
+  else{el.className="sync-indicator sync-error";el.textContent="🔴 Sin conexión";}
+}
+
+async function api(path,method,body){
+  method=method||"GET";
+  setSyncStatus("loading");
+  try{
+    var opts={method:method,headers:{"Content-Type":"application/json"}};
+    if(body)opts.body=JSON.stringify(body);
+    var r=await fetch("/.netlify/functions/api"+path,opts);
+    var data=await r.json();
+    setSyncStatus("ok");
+    return data;
+  }catch(e){setSyncStatus("error");throw e;}
+}
+
+async function initAuth0(){
+  try{
+    auth0Client=await auth0.createAuth0Client({
+      domain:AUTH0_DOMAIN,clientId:AUTH0_CLIENT,
+      cacheLocation:"localstorage",useRefreshTokens:true,
+      authorizationParams:{redirect_uri:window.location.origin}
+    });
+    if(location.search.includes("code=")&&location.search.includes("state=")){
+      try{await auth0Client.handleRedirectCallback();}catch(e){}
+      window.history.replaceState({},document.title,window.location.pathname);
+    }
+    var ok=await auth0Client.isAuthenticated();
+    document.getElementById("loadingScreen").style.display="none";
+    if(ok){var u=await auth0Client.getUser();verificarAcceso(u);}
+    else document.getElementById("loginScreen").style.display="flex";
+  }catch(e){
+    document.getElementById("loadingScreen").innerHTML='<p style="color:#fff">❌ Error al cargar. <button onclick="location.reload()" style="padding:8px 16px;border-radius:8px;border:none;cursor:pointer;margin-top:8px">Reintentar</button></p>';
+  }
+}
+
+async function loginConGoogle(){
+  await auth0Client.loginWithRedirect({authorizationParams:{connection:"google-oauth2",redirect_uri:window.location.origin}});
+}
+async function doLogout(){
+  clearInterval(syncInterval);
+  await auth0Client.logout({logoutParams:{returnTo:window.location.origin}});
+}
+
+async function verificarAcceso(user){
+  var email=user.email.toLowerCase();
+  var usersArr=await api("/usuarios");
+  usersArr.forEach(function(u){usuarios[u.email]={nombre:u.nombre,rol:u.rol,foto:u.foto};});
+  if(Object.keys(usuarios).length===0||email==="gabrielrobles2312@gmail.com"){
+    await api("/usuarios","POST",{email:email,nombre:user.name||"Admin",rol:"admin",foto:user.picture||""});
+    usuarios[email]={nombre:user.name||"Admin",rol:"admin",foto:user.picture||""};
+  }
+  var config=usuarios[email];
+  if(!config){
+    document.getElementById("noAccessScreen").style.display="block";
+    document.getElementById("noAccessEmail").textContent="Tu correo: "+email;
+    return;
+  }
+  await api("/usuarios","POST",{email:email,nombre:config.nombre,rol:config.rol,foto:user.picture||config.foto||""});
+  usuarioActual=Object.assign({},config,{email:email,foto:user.picture||config.foto||""});
+  perms=PERMISOS[usuarioActual.rol];
+  document.getElementById("appScreen").style.display="block";
+  await cargarDatos();
+  iniciarApp();
+}
+
+async function cargarDatos(){
+  var results=await Promise.all([api("/mesas"),api("/carta"),api("/inventario")]);
+  mesas=results[0];carta=results[1];inventario=results[2];
+}
+
+function iniciarApp(){
+  document.getElementById("headerSub").textContent=ROL_LABEL[usuarioActual.rol]+" — "+usuarioActual.nombre;
+  document.getElementById("userChip").innerHTML='<img src="'+usuarioActual.foto+'" onerror="this.style.display=\'none\'"/> '+usuarioActual.nombre+' · Salir';
+  var tabs=[];
+  if(perms.mesas)      tabs.push({id:0,label:"🪑 Mesas"});
+  if(perms.caja)       tabs.push({id:1,label:"💵 Caja"});
+  if(perms.inventario) tabs.push({id:2,label:"📦 Inventario"});
+  if(perms.cierre)     tabs.push({id:3,label:"📊 Cierre"});
+  if(perms.carta)      tabs.push({id:4,label:"🍹 Carta"});
+  if(perms.usuarios)   tabs.push({id:5,label:"👥 Usuarios"});
+  var bar=document.getElementById("tabsBar");bar.innerHTML="";
+  tabs.forEach(function(t,i){
+    var btn=document.createElement("button");
+    btn.className="tab"+(i===0?" active":"");
+    btn.textContent=t.label;
+    btn.onclick=(function(tid){return function(){showTab(tid,btn);};})(t.id);
+    bar.appendChild(btn);
+  });
+  if(tabs.length)showTab(tabs[0].id,bar.querySelector(".tab"));
+  syncInterval=setInterval(async function(){
+    try{
+      var m=await api("/mesas");mesas=m;
+      if(mesaActiva!==null)abrirMesa(mesaActiva);
+      else if(document.getElementById("tab0").style.display!=="none")renderMesas();
+    }catch(e){}
+  },8000);
+}
+
+function showTab(i,btn){
+  [0,1,2,3,4,5].forEach(function(n){document.getElementById("tab"+n).style.display="none";});
+  document.querySelectorAll(".tab").forEach(function(b){b.classList.remove("active");});
+  document.getElementById("tab"+i).style.display="block";
+  if(btn)btn.classList.add("active");
+  mesaActiva=null;
+  var fns={0:renderMesas,1:renderCaja,2:renderInventario,3:renderCierre,4:renderCarta,5:renderUsuarios};
+  if(fns[i])fns[i]();
+}
+function cerrarModal(id){document.getElementById(id).style.display="none";}
+
+// ===== MESAS =====
+function mesaTotal(mesa){return(mesa.comanda||[]).reduce(function(s,i){return s+i.precio*i.cant;},0);}
+function mesaCount(mesa){return(mesa.comanda||[]).reduce(function(s,i){return s+i.cant;},0);}
+
+function renderMesas(){
+  mesaActiva=null;
+  var ocupadas=mesas.filter(function(m){return m.estado!=="libre";}).length;
+  var enConsumo=mesas.reduce(function(s,m){return s+mesaTotal(m);},0);
+  var html='<div class="kpi-grid" style="margin-bottom:12px">';
+  html+='<div class="kpi-box"><small>🪑 Mesas ocupadas</small><b>'+ocupadas+"/"+mesas.length+"</b></div>";
+  html+='<div class="kpi-box"><small>💰 En consumo</small><b style="color:var(--primary)">'+fmt(enConsumo)+"</b></div></div>";
+  html+='<div class="mesas-grid">';
+  mesas.forEach(function(m,i){
+    var estado=m.estado||"libre";
+    var badge=estado==="libre"?"badge-green":estado==="pagando"?"badge-yellow":"badge-purple";
+    var label=estado==="libre"?"Libre":estado==="pagando"?"Pagando":"Ocupada";
+    html+='<div class="mesa-card '+estado+'" onclick="abrirMesa('+i+')">';
+    html+='<div class="mesa-num">'+m.num+"</div>";
+    html+='<span class="mesa-badge '+badge+'">'+label+"</span>";
+    if(estado!=="libre"){
+      html+='<div class="mesa-total">'+fmt(mesaTotal(m))+"</div>";
+      html+='<div class="mesa-info">'+mesaCount(m)+" items · "+(m.mesero||"")+"</div>";
+    }
+    html+="</div>";
+  });
+  html+="</div>";
+  html+='<button class="btn btn-ghost btn-sm" style="margin-top:12px" onclick="agregarMesa()">➕ Agregar mesa</button>';
+  document.getElementById("tab0").innerHTML=html;
+}
+
+async function agregarMesa(){
+  var num=Math.max.apply(null,mesas.map(function(m){return m.num;}).concat([0]))+1;
+  await api("/mesas","POST",{num:num});
+  mesas=await api("/mesas");
+  renderMesas();
+}
+
+function abrirMesa(idx){
+  mesaActiva=idx;
+  var mesa=mesas[idx];
+  if(!mesa.comanda)mesa.comanda=[];
+  var cats=["todas"];
+  carta.forEach(function(p){if(cats.indexOf(p.categoria)===-1)cats.push(p.categoria);});
+  var filtrada=catActiva==="todas"?carta:carta.filter(function(p){return p.categoria===catActiva;});
+
+  var html='<button class="btn btn-ghost btn-sm no-print" onclick="volverMesas()" style="margin-bottom:12px">← Mesas</button>';
+  html+='<div class="comanda-wrap"><div><div class="card">';
+  html+='<div class="card-title">Mesa '+mesa.num+' — Agregar productos</div>';
+  html+='<div class="carta-cats">';
+  cats.forEach(function(c){
+    html+='<button class="cat-btn '+(catActiva===c?"active":"")+'" onclick="setCat(\''+c+'\','+idx+')">'+(c==="todas"?"Todos":c)+"</button>";
+  });
+  html+="</div><div class='carta-grid'>";
+  filtrada.forEach(function(p){
+    html+='<div class="prod-btn" onclick="addToComanda('+idx+','+p.id+')">';
+    html+='<div class="prod-emoji">'+(p.emoji||"🍹")+"</div>";
+    html+='<div class="prod-nombre">'+p.nombre+"</div>";
+    html+='<div class="prod-precio">'+fmt(p.precio)+"</div></div>";
+  });
+  html+="</div></div></div>";
+
+  // TICKET
+  html+='<div><div class="ticket">';
+  html+='<div class="ticket-title">🧾 Mesa '+mesa.num+'<span style="font-size:11px;color:var(--text3);font-weight:400">'+(mesa.abierta_en?"Abierta "+mesa.abierta_en:"")+"</span></div>";
+  if(!mesa.comanda.length){
+    html+='<div class="ticket-empty">Sin productos aún.<br/>Toca un producto para agregar.</div>';
+  } else {
+    mesa.comanda.forEach(function(item,ii){
+      html+='<div class="ticket-item">';
+      html+='<span style="font-size:20px">'+(item.emoji||"🍹")+"</span>";
+      html+='<div class="ti-info"><div class="ti-name">'+item.nombre+"</div>";
+      if(item.nota)html+='<div class="ti-note">📝 '+item.nota+"</div>";
+      var notaEsc=(item.nota||"").replace(/'/g,"\\'");
+      html+='<div class="ticket-qty">';
+      html+='<button class="qty-btn qty-minus" onclick="cambiarCant('+idx+','+ii+',-1)">−</button>';
+      html+='<b>'+item.cant+"</b>";
+      html+='<button class="qty-btn qty-plus" onclick="cambiarCant('+idx+','+ii+',1)">+</button>';
+      html+='<button class="note-btn" onclick="abrirNota('+idx+','+ii+',\''+notaEsc+'\')">📝 nota</button>';
+      html+="</div></div>";
+      html+='<span class="ti-price">'+fmt(item.precio*item.cant)+"</span></div>";
+    });
+    html+='<div class="ticket-total"><span>Total</span><span style="color:var(--primary)">'+fmt(mesaTotal(mesa))+"</span></div>";
+    html+='<button class="btn btn-success btn-full" onclick="abrirCobrar('+idx+')">💰 Cobrar '+fmt(mesaTotal(mesa))+"</button>";
+    html+='<button class="btn btn-danger btn-full" style="margin-top:6px" onclick="cancelarMesa('+idx+')">🗑️ Cancelar mesa</button>';
+  }
+  html+="</div></div></div>";
+  document.getElementById("tab0").innerHTML=html;
+}
+
+async function volverMesas(){
+  mesaActiva=null;
+  mesas=await api("/mesas");
+  renderMesas();
+}
+
+function setCat(cat,idx){catActiva=cat;abrirMesa(idx);}
+
+async function addToComanda(mesaIdx,prodId){
+  var prod=null;
+  for(var i=0;i<carta.length;i++){if(carta[i].id===prodId){prod=carta[i];break;}}
+  if(!prod)return;
+  var mesa=mesas[mesaIdx];
+  if(!mesa.comanda)mesa.comanda=[];
+  var exist=null;
+  for(var j=0;j<mesa.comanda.length;j++){if(mesa.comanda[j].prodId===prodId){exist=mesa.comanda[j];break;}}
+  if(exist){exist.cant++;}
+  else{mesa.comanda.push({prodId:prodId,nombre:prod.nombre,precio:prod.precio,emoji:prod.emoji||"🍹",cant:1,nota:""});}
+  if(mesa.estado==="libre"){mesa.estado="ocupada";mesa.abierta_en=hora();mesa.mesero=usuarioActual.nombre;mesa.mesero_email=usuarioActual.email;}
+  await syncMesa(mesaIdx);
+  abrirMesa(mesaIdx);
+}
+
+async function cambiarCant(mesaIdx,itemIdx,delta){
+  var mesa=mesas[mesaIdx];
+  mesa.comanda[itemIdx].cant+=delta;
+  if(mesa.comanda[itemIdx].cant<=0)mesa.comanda.splice(itemIdx,1);
+  if(!mesa.comanda.length){mesa.estado="libre";mesa.abierta_en=null;mesa.mesero=null;}
+  await syncMesa(mesaIdx);
+  abrirMesa(mesaIdx);
+}
+
+function abrirNota(mesaIdx,itemIdx,notaActual){
+  notaItemIdx={mesaIdx:mesaIdx,itemIdx:itemIdx};
+  document.getElementById("notaTexto").value=notaActual||"";
+  document.getElementById("modalNota").style.display="flex";
+}
+async function guardarNota(){
+  var mi=notaItemIdx;
+  mesas[mi.mesaIdx].comanda[mi.itemIdx].nota=document.getElementById("notaTexto").value.trim();
+  cerrarModal("modalNota");
+  await syncMesa(mi.mesaIdx);
+  abrirMesa(mi.mesaIdx);
+}
+
+async function syncMesa(idx){
+  var m=mesas[idx];
+  await api("/mesas/"+m.num,"PUT",{estado:m.estado,comanda:m.comanda||[],abierta_en:m.abierta_en||null,mesero:m.mesero||null,mesero_email:m.mesero_email||null});
+}
+
+async function cancelarMesa(idx){
+  if(!confirm("¿Cancelar y limpiar esta mesa?"))return;
+  var m=mesas[idx];
+  m.estado="libre";m.comanda=[];m.abierta_en=null;m.mesero=null;
+  await syncMesa(idx);
+  mesas=await api("/mesas");
+  renderMesas();
+}
+
+function abrirCobrar(idx){
+  mesaCobrar=idx;
+  var mesa=mesas[idx];
+  document.getElementById("cobrarMesaNum").textContent=mesa.num;
+  var html="";
+  (mesa.comanda||[]).forEach(function(i){
+    var nota=i.nota?' <em style="font-size:11px;color:var(--text3)">('+i.nota+")</em>":"";
+    html+='<div class="top-item"><span>'+i.emoji+" "+i.nombre+nota+" x"+i.cant+"</span>";
+    html+='<span style="font-weight:800;color:var(--primary)">'+fmt(i.precio*i.cant)+"</span></div>";
+  });
+  html+='<div style="display:flex;justify-content:space-between;font-size:18px;font-weight:900;padding:12px 0 0;color:var(--text)"><span>Total</span><span style="color:var(--primary)">'+fmt(mesaTotal(mesa))+"</span></div>";
+  document.getElementById("cobrarResumen").innerHTML=html;
+  document.getElementById("cobrarComp").value="";
+  document.getElementById("modalCobrar").style.display="flex";
+}
+
+async function confirmarCobro(){
+  var mesa=mesas[mesaCobrar];
+  var metodo=document.getElementById("cobrarMetodo").value;
+  var compFile=document.getElementById("cobrarComp");
+  var comp=null;
+  if(compFile.files[0]){
+    comp=await new Promise(function(res){var r=new FileReader();r.onload=function(e){res(e.target.result);};r.readAsDataURL(compFile.files[0]);});
+  }
+  var fecha=hoy();
+  for(var i=0;i<(mesa.comanda||[]).length;i++){
+    var item=mesa.comanda[i];
+    await api("/ventas","POST",{fecha:fecha,hora:hora(),mesa:mesa.num,producto:item.nombre,cantidad:item.cant,precio:item.precio,total:item.precio*item.cant,pago:metodo,cajero:usuarioActual.nombre,cajero_email:usuarioActual.email,comp:i===0?comp:null});
+  }
+  mesa.estado="libre";mesa.comanda=[];mesa.abierta_en=null;mesa.mesero=null;
+  await syncMesa(mesaCobrar);
+  cerrarModal("modalCobrar");
+  mesas=await api("/mesas");
+  renderMesas();
+}
+
+function imprimirCuenta(){
+  var mesa=mesas[mesaCobrar];
+  var items="";
+  (mesa.comanda||[]).forEach(function(i){
+    var nota=i.nota?'<br/><em style="font-size:11px;color:#999">'+i.nota+"</em>":"";
+    items+='<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #eee">';
+    items+="<span>"+i.emoji+" "+i.nombre+nota+" x"+i.cant+"</span>";
+    items+="<span>"+fmt(i.precio*i.cant)+"</span></div>";
+  });
+  var html="<html><body style='font-family:monospace;padding:20px;max-width:300px'>";
+  html+="<h2 style='text-align:center'>🍺 Ovni Club</h2>";
+  html+="<p style='text-align:center;font-size:12px;color:#999'>Mesa "+mesa.num+" · "+hora()+" · "+hoy()+"</p><hr/>";
+  html+=items+"<hr/>";
+  html+="<div style='display:flex;justify-content:space-between;font-size:18px;font-weight:900;padding:8px 0'>";
+  html+="<span>TOTAL</span><span>"+fmt(mesaTotal(mesa))+"</span></div>";
+  html+="<p style='text-align:center;color:#999;font-size:11px;margin-top:20px'>¡Gracias por tu visita! 🙌</p>";
+  html+="<scri"+"pt>window.print();</scri"+"pt></body></html>";
+  var win=window.open("","_blank","width=400,height=600");
+  win.document.write(html);
+}
+
+// ===== CAJA =====
+async function renderCaja(){
+  var ventas=await api("/ventas?fecha="+hoy());
+  var tv=ventas.reduce(function(s,v){return s+Number(v.total||0);},0);
+  var mesasSet={};ventas.forEach(function(v){mesasSet[v.mesa]=1;});
+  var html='<div class="kpi-grid">';
+  html+='<div class="kpi-box"><small>💰 Total ventas</small><b style="color:var(--primary)">'+fmt(tv)+"</b></div>";
+  html+='<div class="kpi-box"><small>🔢 Comandas</small><b style="color:var(--success)">'+Object.keys(mesasSet).length+"</b></div>";
+  var totalItems=ventas.reduce(function(s,v){return s+Number(v.cantidad||0);},0);
+  html+='<div class="kpi-box"><small>📦 Items vendidos</small><b>'+totalItems+"</b></div></div>";
+  html+='<div class="card"><div class="card-title">Ventas del día ';
+  if(perms.exportar)html+='<button class="btn btn-success btn-sm no-print" onclick="exportCSV()">⬇️ CSV</button>';
+  html+="</div><div class='wrap'><table><thead><tr><th>Mesa</th><th>Producto</th><th>Cant.</th><th>Precio</th><th>Total</th><th>Pago</th><th>Hora</th><th>Cajero</th><th>🧾</th>"+(perms.eliminar?"<th></th>":"")+"</tr></thead><tbody>";
+  if(!ventas.length)html+='<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:20px">Sin ventas hoy</td></tr>';
+  ventas.forEach(function(v){
+    html+="<tr>";
+    html+='<td><span class="badge badge-purple">M'+(v.mesa||"—")+"</span></td>";
+    html+="<td><b>"+v.producto+"</b></td>";
+    html+="<td>"+v.cantidad+"</td>";
+    html+="<td>"+fmt(v.precio)+"</td>";
+    html+='<td style="color:var(--primary);font-weight:800">'+fmt(v.total)+"</td>";
+    html+="<td>"+v.pago+"</td>";
+    html+='<td style="font-size:11px;color:var(--text3)">'+(v.hora||"")+"</td>";
+    html+='<td><span class="badge role-cajero">'+(v.cajero||"")+"</span></td>";
+    html+="<td>"+(v.comp?'<img src="'+v.comp+'" style="width:32px;height:32px;border-radius:6px;cursor:pointer;object-fit:cover" onclick="document.getElementById(\'lightboxImg\').src=this.src;document.getElementById(\'lightbox\').style.display=\'flex\'"/>':"<span style='color:var(--text3)'>—</span>")+"</td>";
+    if(perms.eliminar)html+='<td><button class="btn btn-danger btn-sm" onclick="eliminarVenta('+v.id+')">✕</button></td>';
+    html+="</tr>";
+  });
+  html+='<tr class="tfoot"><td colspan="'+(perms.eliminar?8:7)+'">TOTAL</td><td style="font-size:15px">'+fmt(tv)+'</td><td colspan="2"></td></tr>';
+  html+="</tbody></table></div></div>";
+  document.getElementById("tab1").innerHTML=html;
+}
+async function eliminarVenta(id){
+  if(!confirm("¿Eliminar esta venta?"))return;
+  await api("/ventas/"+id,"DELETE");
+  renderCaja();
+}
+async function exportCSV(){
+  var ventas=await api("/ventas?fecha="+hoy());
+  var rows=["Fecha,Hora,Mesa,Producto,Cant,Precio,Total,Pago,Cajero"];
+  ventas.forEach(function(v){rows.push(v.fecha+","+v.hora+","+v.mesa+","+v.producto+","+v.cantidad+","+v.precio+","+v.total+","+v.pago+","+(v.cajero||""));});
+  var tv=ventas.reduce(function(s,v){return s+Number(v.total||0);},0);
+  rows.push("\nTOTAL,,,,,,,"+tv+",");
+  var blob=new Blob([rows.join("\n")],{type:"text/csv;charset=utf-8;"});
+  var a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download="ovnibar_"+hoy()+".csv";a.click();
+}
+
+// ===== INVENTARIO =====
+async function renderInventario(){
+  var inv=await api("/inventario");inventario=inv;
+  var bajos=inv.filter(function(i){return i.stock<i.minimo;}).length;
+  var html='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">';
+  html+=bajos>0?'<span class="badge badge-red">⚠️ '+bajos+' bajo mínimo</span>':'<span class="badge badge-green">✅ Stock OK</span>';
+  html+='<button class="btn btn-primary btn-sm" onclick="abrirModalInvProd(null)">➕ Agregar producto</button></div>';
+  html+='<div class="card"><div class="wrap"><table><thead><tr><th>Producto</th><th>Stock</th><th>Mínimo</th><th>Estado</th><th>Último mov.</th><th>Acciones</th></tr></thead><tbody>';
+  inv.forEach(function(item,i){
+    var ok=item.stock>=item.minimo;
+    var movs=Array.isArray(item.movs)?item.movs:(typeof item.movs==="string"?JSON.parse(item.movs||"[]"):[]);
+    var last=movs.length?movs[movs.length-1]:null;
+    html+="<tr>";
+    html+="<td><b>"+item.producto+"</b></td>";
+    html+='<td><b style="font-size:16px;color:'+(ok?"var(--text)":"var(--danger)")+'">'+item.stock+"</b></td>";
+    html+='<td style="color:var(--text3)">'+item.minimo+"</td>";
+    html+='<td><span class="badge '+(ok?"badge-green":"badge-red")+'">'+(ok?"✅ OK":"⚠️ Bajo")+"</span></td>";
+    html+="<td style='font-size:11px'>"+(last?'<span style="color:'+(last.tipo==="entrada"?"var(--success)":"var(--danger)")+'">'+(last.tipo==="entrada"?"📥 +":"📤 -")+last.cant+"</span> · "+last.hora+" · <b>"+last.usuario+"</b>":"-")+"</td>";
+    html+='<td><div style="display:flex;gap:5px;flex-wrap:wrap">';
+    html+='<button class="btn btn-success btn-sm" onclick="abrirModalMov('+i+')">📥 Mover</button>';
+    html+='<button class="btn btn-warn btn-sm" onclick="abrirModalInvProd('+i+')">✏️</button>';
+    if(perms.eliminar)html+='<button class="btn btn-danger btn-sm" onclick="eliminarInvProd('+i+')">✕</button>';
+    html+="</div></td></tr>";
+  });
+  html+="</tbody></table></div></div>";
+  document.getElementById("tab2").innerHTML=html;
+}
+function abrirModalInvProd(idx){
+  editandoInvIdx=idx;
+  document.getElementById("invProdTitulo").textContent=idx===null?"➕ Agregar producto":"✏️ Editar producto";
+  document.getElementById("ipNombre").value=idx===null?"":inventario[idx].producto;
+  document.getElementById("ipStock").value=idx===null?"":inventario[idx].stock;
+  document.getElementById("ipMinimo").value=idx===null?"":inventario[idx].minimo;
+  document.getElementById("modalInvProd").style.display="flex";
+}
+async function guardarInvProd(){
+  var n=document.getElementById("ipNombre").value.trim();
+  var s=Number(document.getElementById("ipStock").value)||0;
+  var m=Number(document.getElementById("ipMinimo").value)||0;
+  if(!n){alert("Ingresa el nombre");return;}
+  if(editandoInvIdx===null){
+    await api("/inventario","POST",{producto:n,stock:s,minimo:m});
+  }else{
+    var item=inventario[editandoInvIdx];
+    var movs=Array.isArray(item.movs)?item.movs:[];
+    await api("/inventario/"+item.id,"PUT",{producto:n,stock:s,minimo:m,movs:movs});
+  }
+  cerrarModal("modalInvProd");renderInventario();
+}
+async function eliminarInvProd(i){
+  if(!confirm("¿Eliminar \""+inventario[i].producto+"\"?"))return;
+  await api("/inventario/"+inventario[i].id,"DELETE");
+  renderInventario();
+}
+function abrirModalMov(i){
+  movInvIdx=i;
+  document.getElementById("movProdLabel").textContent=inventario[i].producto+" — Stock: "+inventario[i].stock;
+  document.getElementById("movCant").value="";
+  document.getElementById("movNota").value="";
+  document.getElementById("modalMov").style.display="flex";
+}
+async function guardarMov(){
+  var tipo=document.getElementById("movTipo").value;
+  var cant=Number(document.getElementById("movCant").value)||0;
+  var nota=document.getElementById("movNota").value.trim();
+  if(cant<1){alert("Ingresa una cantidad válida");return;}
+  var item=inventario[movInvIdx];
+  var movs=Array.isArray(item.movs)?item.movs:(typeof item.movs==="string"?JSON.parse(item.movs||"[]"):[]);
+  movs.push({ts:Date.now(),tipo:tipo,cant:cant,nota:nota,usuario:usuarioActual.nombre,hora:hora()});
+  var newStock=tipo==="entrada"?item.stock+cant:Math.max(0,item.stock-cant);
+  await api("/inventario/"+item.id,"PUT",{producto:item.producto,stock:newStock,minimo:item.minimo,movs:movs});
+  cerrarModal("modalMov");renderInventario();
+}
+
+// ===== CIERRE =====
+async function renderCierre(){
+  var ventas=await api("/ventas?fecha="+hoy());
+  var tv=ventas.reduce(function(s,v){return s+Number(v.total||0);},0);
+  var porProd={},porCajero={},porPago={},mesasSet={};
+  ventas.forEach(function(v){
+    if(!porProd[v.producto])porProd[v.producto]={cant:0,total:0};
+    porProd[v.producto].cant+=Number(v.cantidad);porProd[v.producto].total+=Number(v.total);
+    var k=v.cajero||"?";
+    if(!porCajero[k])porCajero[k]={cant:0,total:0};
+    porCajero[k].cant++;porCajero[k].total+=Number(v.total);
+    if(!porPago[v.pago])porPago[v.pago]=0;
+    porPago[v.pago]+=Number(v.total);
+    mesasSet[v.mesa]=1;
+  });
+  var numMesas=Object.keys(mesasSet).length;
+  var html='<div class="card"><div class="card-title">📊 Cierre del día — '+hoy()+"</div>";
+  html+='<div class="kpi-grid">';
+  html+='<div class="kpi-box" style="border-color:var(--primary)"><small>🧾 Total ventas</small><b style="color:var(--primary)">'+fmt(tv)+"</b></div>";
+  html+='<div class="kpi-box" style="border-color:var(--success)"><small>🪑 Mesas atendidas</small><b style="color:var(--success)">'+numMesas+"</b></div>";
+  var totalItems=ventas.reduce(function(s,v){return s+Number(v.cantidad||0);},0);
+  html+='<div class="kpi-box"><small>📦 Items vendidos</small><b>'+totalItems+"</b></div>";
+  html+='<div class="kpi-box"><small>📊 Ticket promedio</small><b style="color:var(--warn-dark)">'+fmt(numMesas?tv/numMesas:0)+"</b></div></div>";
+  html+="<h5 style='margin-bottom:8px'>👤 Por cajero / mesero</h5>";
+  Object.entries(porCajero).forEach(function(e){
+    html+='<div class="top-item"><span><b>'+e[0]+"</b></span><span style='color:var(--text3)'>"+e[1].cant+' ventas</span><span style="color:var(--primary);font-weight:800">'+fmt(e[1].total)+"</span></div>";
+  });
+  html+="<h5 style='margin:12px 0 8px'>🏆 Top productos</h5>";
+  Object.entries(porProd).sort(function(a,b){return b[1].total-a[1].total;}).slice(0,8).forEach(function(e){
+    html+='<div class="top-item"><span><b>'+e[0]+"</b></span><span style='color:var(--text3)'>x"+e[1].cant+'</span><span style="color:var(--primary);font-weight:800">'+fmt(e[1].total)+"</span></div>";
+  });
+  html+="<h5 style='margin:12px 0 8px'>💵 Por método de pago</h5>";
+  Object.entries(porPago).forEach(function(e){
+    html+='<div class="top-item"><span><b>'+e[0]+'</b></span><span style="color:var(--success);font-weight:800">'+fmt(e[1])+"</span></div>";
+  });
+  if(perms.exportar)html+='<button class="btn btn-primary btn-full no-print" onclick="exportCSV()">⬇️ Exportar CSV</button>';
+  html+="</div>";
+  document.getElementById("tab3").innerHTML=html;
+}
+
+// ===== CARTA =====
+async function renderCarta(){
+  var c=await api("/carta");carta=c;
+  var cats=[];
+  carta.forEach(function(p){if(cats.indexOf(p.categoria)===-1)cats.push(p.categoria);});
+  var html='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
+  html+='<b>🍹 Carta ('+carta.length+' productos)</b>';
+  html+='<button class="btn btn-primary btn-sm" onclick="abrirModalProdCarta(null)">➕ Agregar</button></div>';
+  cats.forEach(function(cat){
+    html+='<div class="card"><div class="card-title">'+cat+"</div><div class='wrap'><table><thead><tr><th>Emoji</th><th>Producto</th><th>Precio</th><th>Acciones</th></tr></thead><tbody>";
+    carta.filter(function(p){return p.categoria===cat;}).forEach(function(p){
+      html+="<tr><td style='font-size:20px'>"+(p.emoji||"🍹")+"</td><td><b>"+p.nombre+"</b></td>";
+      html+='<td style="color:var(--primary);font-weight:800">'+fmt(p.precio)+"</td>";
+      html+='<td><div style="display:flex;gap:6px">';
+      html+='<button class="btn btn-warn btn-sm" onclick="abrirModalProdCarta('+p.id+')">✏️</button>';
+      html+='<button class="btn btn-danger btn-sm" onclick="eliminarProdCarta('+p.id+')">✕</button>';
+      html+="</div></td></tr>";
+    });
+    html+="</tbody></table></div></div>";
+  });
+  document.getElementById("tab4").innerHTML=html;
+}
+function abrirModalProdCarta(id){
+  editandoProdCartaIdx=id;
+  var p=id?carta.filter(function(c){return c.id===id;})[0]:null;
+  document.getElementById("modalProdCartaTitulo").textContent=id?"✏️ Editar producto":"➕ Agregar producto";
+  document.getElementById("cpNombre").value=p?p.nombre:"";
+  document.getElementById("cpCategoria").value=p?p.categoria:"🍺 Cervezas";
+  document.getElementById("cpPrecio").value=p?p.precio:"";
+  document.getElementById("cpEmoji").value=p?p.emoji:"";
+  document.getElementById("modalProdCarta").style.display="flex";
+}
+async function guardarProdCarta(){
+  var nombre=document.getElementById("cpNombre").value.trim();
+  var categoria=document.getElementById("cpCategoria").value;
+  var precio=Number(document.getElementById("cpPrecio").value)||0;
+  var emoji=document.getElementById("cpEmoji").value.trim()||"🍹";
+  if(!nombre||!precio){alert("Completa nombre y precio");return;}
+  if(editandoProdCartaIdx){
+    await api("/carta/"+editandoProdCartaIdx,"PUT",{nombre:nombre,categoria:categoria,precio:precio,emoji:emoji});
+  }else{
+    await api("/carta","POST",{nombre:nombre,categoria:categoria,precio:precio,emoji:emoji});
+  }
+  cerrarModal("modalProdCarta");renderCarta();
+}
+async function eliminarProdCarta(id){
+  if(!confirm("¿Eliminar este producto de la carta?"))return;
+  await api("/carta/"+id,"DELETE");renderCarta();
+}
+
+// ===== USUARIOS =====
+async function renderUsuarios(){
+  var usrs=await api("/usuarios");
+  usuarios={};
+  usrs.forEach(function(u){usuarios[u.email]={nombre:u.nombre,rol:u.rol,foto:u.foto};});
+  var html='<div class="card"><div class="card-title">👥 Usuarios ('+usrs.length+') ';
+  html+='<button class="btn btn-primary btn-sm" onclick="abrirModalUsuario(null)">➕ Agregar</button></div>';
+  html+="<div class='wrap'><table><thead><tr><th>Usuario</th><th>Correo</th><th>Rol</th><th>Acciones</th></tr></thead><tbody>";
+  usrs.forEach(function(u){
+    html+="<tr><td><div style='display:flex;align-items:center;gap:8px'>";
+    html+=u.foto?'<img src="'+u.foto+'" style="width:28px;height:28px;border-radius:50%"/>':'👤';
+    html+="<b>"+u.nombre+"</b>"+(u.email===usuarioActual.email?' <span style="font-size:10px;color:var(--primary)">(tú)</span>':"")+"</div></td>";
+    html+='<td style="color:var(--text3);font-size:12px">'+u.email+"</td>";
+    html+='<td><span class="badge '+(ROL_COLOR[u.rol]||"badge-purple")+'">'+(ROL_LABEL[u.rol]||u.rol)+"</span></td>";
+    html+='<td><div style="display:flex;gap:6px">';
+    html+='<button class="btn btn-warn btn-sm" onclick="abrirModalUsuario(\''+u.email+'\')">✏️</button>';
+    if(u.email!==usuarioActual.email)html+='<button class="btn btn-danger btn-sm" onclick="eliminarUsuario(\''+u.email+'\')">✕</button>';
+    html+="</div></td></tr>";
+  });
+  html+="</tbody></table></div></div>";
+  document.getElementById("tab5").innerHTML=html;
+}
+function abrirModalUsuario(email){
+  editandoEmail=email;
+  document.getElementById("modalUsuTitulo").textContent=email?"✏️ Editar Usuario":"➕ Agregar Usuario";
+  document.getElementById("mEmail").value=email||"";
+  document.getElementById("mEmail").disabled=!!email;
+  document.getElementById("mNombre").value=email&&usuarios[email]?usuarios[email].nombre||"":"";
+  document.getElementById("mRol").value=email&&usuarios[email]?usuarios[email].rol||"mesero":"mesero";
+  actualizarDescRol();
+  document.getElementById("modalUsuario").style.display="flex";
+}
+document.getElementById("mRol").addEventListener("change",actualizarDescRol);
+function actualizarDescRol(){document.getElementById("mRolDesc").textContent=ROL_DESC[document.getElementById("mRol").value]||"";}
+async function guardarUsuario(){
+  var email=document.getElementById("mEmail").value.trim().toLowerCase();
+  var nombre=document.getElementById("mNombre").value.trim();
+  var rol=document.getElementById("mRol").value;
+  if(!email||!nombre){alert("Completa todos los campos");return;}
+  if(!email.includes("@")){alert("Correo inválido");return;}
+  await api("/usuarios","POST",{email:email,nombre:nombre,rol:rol,foto:usuarios[email]?usuarios[email].foto||"":""});
+  cerrarModal("modalUsuario");renderUsuarios();
+}
+async function eliminarUsuario(email){
+  if(!confirm("¿Eliminar a "+(usuarios[email]?usuarios[email].nombre:email)+"?"))return;
+  await api("/usuarios/"+email,"DELETE");renderUsuarios();
+}
+
+initAuth0();
+</script>
+</body>
+</html>
