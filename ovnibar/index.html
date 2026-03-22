@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>OvniBar</title>
+<script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js"></script>
+<style>
+:root{--bg:#f0f2f5;--surface:#fff;--surface2:#f8f9fa;--border:#e0e0e0;--text:#1a1a2e;--text2:#666;--text3:#999;--primary:#6c5ce7;--pl:#6c5ce722;--success:#00b894;--sl:#00b89422;--danger:#ff7675;--dl:#ff767522;--warn:#fdcb6e;--wdark:#b7860b;--shadow:0 1px 4px rgba(0,0,0,.08)}
+[data-theme="dark"]{--bg:#0f0f1a;--surface:#1a1a2e;--surface2:#16213e;--border:#2d2d4e;--text:#f0f0ff;--text2:#aaa;--text3:#666;--shadow:0 1px 4px rgba(0,0,0,.4)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:sans-serif;background:var(--bg);min-height:100vh;color:var(--text);transition:background .3s,color .3s}
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a1a2e,#16213e)}
+.login-box{background:var(--surface);border-radius:20px;padding:40px;width:100%;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,.3);text-align:center}
+.login-box h2{font-size:26px;margin-bottom:6px;color:var(--text)}
+.login-box p{color:var(--text3);font-size:13px;margin-bottom:28px}
+.btn-google{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:14px;border-radius:12px;border:2px solid var(--border);background:var(--surface);cursor:pointer;font-size:16px;font-weight:600;color:var(--text)}
+.btn-google img{width:22px}
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;font-size:16px;gap:12px}
+.spinner{width:40px;height:40px;border:4px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.header{background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;position:sticky;top:0;z-index:50}
+.header h2{font-size:17px;margin:0}
+.header-right{display:flex;gap:8px;align-items:center}
+.user-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);padding:6px 12px;border-radius:20px;font-size:12px;cursor:pointer;border:none;color:#fff}
+.user-chip img{width:24px;height:24px;border-radius:50%}
+.dark-toggle{background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 10px;border-radius:20px;cursor:pointer;font-size:16px}
+.turno-badge{font-size:11px;padding:3px 8px;border-radius:10px;font-weight:600}
+.turno-abierto{background:#00b89422;color:#00b894}
+.turno-cerrado{background:#ff767522;color:#ff7675}
+.tabs{display:flex;gap:4px;padding:8px;overflow-x:auto;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:52px;z-index:40;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:10px 16px;border-radius:10px;border:none;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap;background:var(--surface2);color:var(--text2);transition:all .2s}
+.tab.active{background:var(--primary);color:#fff}
+.content{padding:12px;max-width:1000px;margin:0 auto}
+.card{background:var(--surface);border-radius:12px;padding:14px;margin-bottom:12px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.card-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-size:14px;font-weight:700;color:var(--text)}
+.mesas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+.mesa-card{border-radius:14px;padding:18px 12px;text-align:center;cursor:pointer;border:2px solid transparent;transition:all .2s;background:var(--surface2)}
+.mesa-card.libre{border-color:var(--sl)}
+.mesa-card.libre:hover{border-color:var(--success);transform:scale(1.02)}
+.mesa-card.ocupada{border-color:var(--pl);background:var(--pl)}
+.mesa-card.ocupada:hover{border-color:var(--primary);transform:scale(1.02)}
+.mesa-card.pagando{border-color:#fdcb6e88;background:#fdcb6e11}
+.mesa-num{font-size:32px;font-weight:900;margin-bottom:6px;color:var(--text)}
+.mesa-badge{font-size:11px;font-weight:700;border-radius:10px;padding:3px 10px;display:inline-block}
+.bg{background:var(--sl);color:var(--success)}
+.bp{background:var(--pl);color:var(--primary)}
+.by{background:#fdcb6e33;color:var(--wdark)}
+.br{background:var(--dl);color:var(--danger)}
+.mesa-total{font-size:14px;font-weight:800;color:var(--primary);margin-top:6px}
+.mesa-info{font-size:10px;color:var(--text3);margin-top:2px}
+.comanda-wrap{display:grid;grid-template-columns:1fr 320px;gap:12px}
+@media(max-width:680px){.comanda-wrap{grid-template-columns:1fr}}
+.carta-cats{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px;scrollbar-width:none}
+.carta-cats::-webkit-scrollbar{display:none}
+.cat-btn{padding:8px 16px;border-radius:20px;border:none;cursor:pointer;font-size:13px;font-weight:600;background:var(--surface2);color:var(--text2);white-space:nowrap;transition:all .2s}
+.cat-btn.active{background:var(--primary);color:#fff}
+.carta-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px}
+@media(max-width:500px){.carta-grid{grid-template-columns:repeat(3,1fr)}}
+.prod-btn{background:var(--surface2);border:2px solid var(--border);border-radius:12px;padding:12px 8px;cursor:pointer;text-align:center;transition:all .15s;user-select:none;position:relative}
+.prod-btn:active{transform:scale(0.94);background:var(--pl);border-color:var(--primary)}
+.prod-btn.agotado{opacity:.4;pointer-events:none}
+.prod-agotado-tag{position:absolute;top:4px;right:4px;background:var(--danger);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:6px}
+.prod-emoji{font-size:26px;margin-bottom:4px}
+.prod-nombre{font-size:11px;font-weight:700;color:var(--text);line-height:1.2;margin-bottom:3px}
+.prod-precio{font-size:12px;color:var(--primary);font-weight:800}
+.ticket{background:var(--surface);border-radius:12px;padding:14px;border:1px solid var(--border)}
+@media(min-width:681px){.ticket{position:sticky;top:110px}}
+.ticket-title{font-size:15px;font-weight:800;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;color:var(--text)}
+.ticket-item{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.ti-info{flex:1}
+.ti-name{font-weight:600;color:var(--text)}
+.ti-note{font-size:11px;color:var(--text3);font-style:italic;margin-top:2px}
+.ti-price{color:var(--primary);font-weight:800;font-size:13px;min-width:70px;text-align:right;padding-top:2px}
+.ticket-qty{display:flex;align-items:center;gap:6px;margin-top:4px}
+.qty-btn{width:26px;height:26px;border-radius:50%;border:none;cursor:pointer;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.qty-minus{background:var(--dl);color:var(--danger)}
+.qty-plus{background:var(--sl);color:var(--success)}
+.note-btn{background:none;border:1px dashed var(--border);border-radius:6px;padding:2px 6px;font-size:10px;color:var(--text3);cursor:pointer}
+.ticket-total{display:flex;justify-content:space-between;padding:12px 0 0;font-size:17px;font-weight:900;color:var(--text)}
+.ticket-empty{text-align:center;color:var(--text3);padding:30px 0;font-size:13px}
+.btn{padding:10px 18px;border:none;border-radius:10px;cursor:pointer;font-weight:700;font-size:14px;transition:all .15s}
+.btn:active{transform:scale(0.97)}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-success{background:var(--success);color:#fff}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-warn{background:var(--warn);color:#333}
+.btn-ghost{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.btn-full{width:100%;padding:14px;font-size:15px;margin-top:8px;border-radius:12px}
+.btn-sm{padding:5px 10px;font-size:12px;border-radius:8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--primary);color:#fff;padding:9px 10px;text-align:left;white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text)}
+tr:nth-child(even) td{background:var(--surface2)}
+.tfoot td{background:var(--primary);color:#fff;font-weight:800}
+.wrap{overflow-x:auto}
+.badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;display:inline-block}
+.role-admin{background:var(--pl);color:var(--primary)}
+.role-cajero{background:var(--sl);color:var(--success)}
+.role-inventario{background:#fdcb6e33;color:var(--wdark)}
+.role-supervisor{background:#fd79a822;color:#e84393}
+.role-mesero{background:#0984e322;color:#0984e3}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;z-index:100;padding:0}
+@media(min-width:500px){.modal-overlay{align-items:center;padding:16px}}
+.modal{background:var(--surface);border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:480px;box-shadow:0 -8px 32px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto}
+@media(min-width:500px){.modal{border-radius:16px}}
+.modal h3{margin-bottom:16px;font-size:18px;color:var(--text)}
+.modal input,.modal select,.modal textarea{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);font-size:14px;margin-bottom:12px;background:var(--surface2);color:var(--text)}
+.modal .btns{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+.kpi-box{background:var(--surface);border-radius:12px;padding:14px;border:2px solid var(--border)}
+.kpi-box small{font-size:11px;color:var(--text3);display:block;margin-bottom:4px}
+.kpi-box b{font-size:20px;font-weight:900;display:block}
+.top-item{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;font-size:13px;color:var(--text)}
+.sync-indicator{font-size:11px;padding:3px 8px;border-radius:10px;font-weight:600}
+.sync-ok{background:var(--sl);color:var(--success)}
+.sync-loading{background:#fdcb6e33;color:var(--wdark)}
+.sync-error{background:var(--dl);color:var(--danger)}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.9);display:flex;align-items:center;justify-content:center;z-index:200;cursor:pointer}
+.lightbox img{max-width:90vw;max-height:90vh;border-radius:12px}
+.chart-bar{display:flex;align-items:flex-end;gap:4px;height:120px;margin:12px 0}
+.bar{background:var(--primary);border-radius:4px 4px 0 0;flex:1;min-width:8px;opacity:.8;transition:height .3s}
+.bar:hover{opacity:1}
+.bar-label{font-size:9px;color:var(--text3);text-align:center;margin-top:4px}
+@media print{.no-print{display:none!important}}
+</style>
+</head>
+<body>
+<div id="loadingScreen" class="loading">
+  <div class="spinner"></div>
+  <span>Cargando OvniBar...</span>
+</div>
+<div id="loginScreen" class="login-wrap" style="display:none">
+  <div class="login-box">
+    <div style="font-size:56px;margin-bottom:12px">🍺</div>
+    <h2>Ovni Club</h2>
+    <p>Sistema de Bar</p>
+    <button class="btn-google" onclick="loginConGoogle()">
+      <img src="https://www.google.com/favicon.ico"/> Continuar con Google
+    </button>
+  </div>
+</div>
+<div id="noAccessScreen" style="display:none">
+  <div class="login-wrap">
+    <div class="login-box">
+      <div style="font-size:48px;margin-bottom:12px">🚫</div>
+      <h2>Sin acceso</h2>
+      <p id="noAccessEmail" style="font-size:12px;color:var(--text3);margin:12px 0 20px"></p>
+      <button class="btn btn-primary btn-full" onclick="doLogout()">Cerrar sesión</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODALES -->
+<div id="modalNota" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <h3>📝 Nota para el item</h3>
+    <textarea id="notaTexto" placeholder="Ej: sin hielo, extra limón..." rows="3"></textarea>
+    <div class="btns">
+      <button class="btn btn-ghost" onclick="cerrarModal('modalNota')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarNota()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="modalCobrar" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <h3>💰 Cobrar Mesa <span id="cobrarMesaNum"></span></h3>
+    <div id="cobrarResumen" style="margin-bottom:14px"></div>
+    <select id="cobrarMetodo">
+      <option>Efectivo</option><option>Nequi</option><option>Daviplata</option><option>Bancolombia</option><option>Mixto</option>
+    </select>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <div style="flex:1">
+        <label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">Descuento %</label>
+        <input type="number" id="cobrarDescuento" value="0" min="0" max="100" style="margin-bottom:0"/>
+      </div>
+      <div style="flex:1">
+        <label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">Propina $</label>
+        <input type="number" id="cobrarPropina" value="0" min="0" style="margin-bottom:0"/>
+      </div>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-bottom:12px;cursor:pointer">
+      <input type="checkbox" id="cobrarFiar"/> Registrar como fiado
+    </label>
+    <input type="text" id="cobrarCliente" placeholder="Nombre del cliente (si es fiado)" style="display:none"/>
+    <div style="margin-bottom:12px">
+      <label style="font-size:12px;color:var(--text3);display:block;margin-bottom:6px">🧾 Comprobante (opcional)</label>
+      <input type="file" id="cobrarComp" accept="image/*" style="font-size:13px"/>
+    </div>
+    <div id="cobrarTotal" style="font-size:18px;font-weight:900;text-align:center;color:var(--primary);margin-bottom:12px"></div>
+    <div class="btns">
+      <button class="btn btn-ghost no-print" onclick="imprimirCuenta()">🖨️ Imprimir</button>
+      <button class="btn btn-ghost" onclick="cerrarModal('modalCobrar')">Cancelar</button>
+      <button class="btn btn-success" onclick="confirmarCobro()">✅ Cobrar</button>
+    </div>
+  </div>
+</div>
+
+<div id="modalDescItem" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <h3>🏷️ Descuento / Cortesía</h3>
+    <p id="descItemNombre" style="font-weight:700;color:var(--primary);margin-bottom:12px"></p>
+    <select id="descTipo" style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);font-size:14px;margin-bottom:12px;background:var(--surface2);color:var(--text)">
+      <option value="cortesia">🎁 Cortesía (100% gratis)</option>
+      <option value="descuento">% Descuento</option>
+    </select>
+    <input type="number" id="descPct" placeholder="Porcentaje (ej: 20)" min="0" max="100" style="display:none"/>
+    <div class="btns">
+      <button class="btn btn-ghost" onclick="cerrarModal('modalDescItem')">Cancelar</button>
+      <button class="btn btn-primary" onclick="aplicarDescItem()">Aplicar</button>
+    </div>
+  </div>
+</div>
+
+<div id="modalProdCarta" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <h3 id="modalProdCartaTitulo">➕ Producto en carta</h3>
+    <input id="cpNombre" placeholder="Nombre del producto"/>
+    <select id="cpCategoria">
+      <option>🍺 Cervezas</option><option>🥃 Licores</option>
+      <option>🍹 Cócteles</option><option>🥤 Sin alcohol</option><option>⭐ Especiales</option>
+    </select>
+    <input id="cpPrecio" type="number" placeholder="Precio (COP)"/>
+    <input id="cpEmoji" placeholder="Emoji (ej: 🍺)"/>
+    <div class="btns">
+      <button class="btn btn-ghost" onclick="cerrarModal('modalProdCarta')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarProdCarta()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="modalCombo" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <h3 id="modalComboTitulo">➕ Crear combo</h3>
+    <input id="comboNombre" placeholder="Nombre del combo"/>
+    <input id="comboDesc" placeholder="Descripción (ej: Botella + 4 energéticas)"/>
+    <input id="comboPrecio" type="number" placeholder="Precio especial (COP)"/>
+    <input id="comboEmoji" placeholder="Emoji (ej: ⭐)"/>
+    <div class="btns">
+      <button class="btn btn-ghost" onclick="cerrarModal('modalCombo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarCombo()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="modalUsuario" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <h3 id="modalUsuTitulo">➕ Agregar Usuario</h3>
+    <input id="mEmail" placeholder="Correo Gmail" type="email"/>
+    <input id="mNombre" placeholder="Nombre completo"/>
+    <select id="mRol">
+      <option value="mesero">Mesero — Solo mesas y pedidos</option>
+      <option value="cajero">Cajero — Mesas y caja</option>
+      <option value="inventario">Bodega — Solo inventario</option>
+      <option value="supervisor">Supervisor — Todo menos admin</option>
+      <option value="admin">Administrador — Acceso total</option>
+    </select>
+    <p id="mRolDesc" style="font-size:12px;color:var(--text3);margin-bottom:12px"></p>
+    <div class="btns">
+      <button class="btn btn-ghost" onclick="cerrarModal('modalUsuario')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarUsuario()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="modalMov" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <h3>📦 Movimiento de inventario</h3>
+    <p id="movProdLabel" style="font-weight:800;color:var(--primary);margin-bottom:12px"></p>
+    <select id="movTipo" style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);font-size:14px;margin-bottom:12px;background:var(--surface2);color:var(--text)">
+      <option value="entrada">📥 Entrada (compra / reposición)</option>
+      <option value="salida">📤 Salida (ajuste / pérdida)</option>
+    </select>
+    <input id="movCant" type="number" placeholder="Cantidad" min="1"/>
+    <input id="movNota" placeholder="Nota (opcional)"/>
+    <div class="btns">
+      <button class="btn btn-ghost" onclick="cerrarModal('modalMov')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarMov()">Registrar</button>
+    </div>
+  </div>
+</div>
+
+<div id="modalInvProd" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <h3 id="invProdTitulo">➕ Producto en inventario</h3>
+    <input id="ipNombre" placeholder="Nombre del producto"/>
+    <div style="display:flex;gap:8px">
+      <input id="ipStock" type="number" placeholder="Stock inicial" style="margin-bottom:12px"/>
+      <input id="ipMinimo" type="number" placeholder="Stock mínimo" style="margin-bottom:12px"/>
+    </div>
+    <div class="btns">
+      <button class="btn btn-ghost" onclick="cerrarModal('modalInvProd')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarInvProd()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="modalTurno" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <h3 id="modalTurnoTitulo">🕐 Abrir turno</h3>
+    <input id="turnoNombre" placeholder="Nombre del turno (ej: Noche Viernes)"/>
+    <div style="margin-bottom:12px">
+      <label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">💵 Caja inicial ($)</label>
+      <input id="turnoCajaInicial" type="number" placeholder="0" style="margin-bottom:0"/>
+    </div>
+    <div class="btns">
+      <button class="btn btn-ghost" onclick="cerrarModal('modalTurno')">Cancelar</button>
+      <button class="btn btn-success" onclick="confirmarAbrirTurno()">Abrir turno</button>
+    </div>
+  </div>
+</div>
+
+<div id="modalGasto" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <h3>💸 Registrar gasto</h3>
+    <select id="gastoCategoria" style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);font-size:14px;margin-bottom:12px;background:var(--surface2);color:var(--text)">
+      <option>Compra de licores</option><option>Compra de insumos</option>
+      <option>Hielo / limones</option><option>Servicios</option>
+      <option>Personal</option><option>Mantenimiento</option><option>Otro</option>
+    </select>
+    <input id="gastoDesc" placeholder="Descripción"/>
+    <input id="gastoMonto" type="number" placeholder="Monto ($)"/>
+    <div class="btns">
+      <button class="btn btn-ghost" onclick="cerrarModal('modalGasto')">Cancelar</button>
+      <button class="btn btn-danger" onclick="guardarGasto()">Registrar gasto</button>
+    </div>
+  </div>
+</div>
+
+<div id="modalFiado" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <h3>🤝 Registrar fiado</h3>
+    <input id="fiadoCliente" placeholder="Nombre del cliente"/>
+    <input id="fiadoMonto" type="number" placeholder="Monto ($)"/>
+    <input id="fiadoDesc" placeholder="Descripción (ej: 2 cervezas + ron)"/>
+    <div class="btns">
+      <button class="btn btn-ghost" onclick="cerrarModal('modalFiado')">Cancelar</button>
+      <button class="btn btn-warn" onclick="guardarFiado()">Registrar fiado</button>
+    </div>
+  </div>
+</div>
+
+<div id="modalReserva" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <h3 id="modalReservaTitulo">📅 Nueva reserva</h3>
+    <input id="resNombre" placeholder="Nombre del cliente"/>
+    <input id="resTelefono" placeholder="Teléfono (opcional)"/>
+    <div style="display:flex;gap:8px">
+      <input id="resFecha" type="date" style="margin-bottom:12px;flex:1"/>
+      <input id="resHora" type="time" style="margin-bottom:12px;flex:1"/>
+    </div>
+    <input id="resPersonas" type="number" placeholder="Número de personas" min="1"/>
+    <textarea id="resNotas" placeholder="Notas (mesa preferida, ocasión especial...)" rows="2"></textarea>
+    <div class="btns">
+      <button class="btn btn-ghost" onclick="cerrarModal('modalReserva')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarReserva()">Guardar reserva</button>
+    </div>
+  </div>
+</div>
+
+<div id="modalEvento" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <h3 id="modalEventoTitulo">🎉 Nuevo evento</h3>
+    <input id="evNombre" placeholder="Nombre del evento"/>
+    <input id="evFecha" type="date"/>
+    <input id="evCover" type="number" placeholder="Cover ($) — 0 si es gratis"/>
+    <textarea id="evDesc" placeholder="Descripción del evento" rows="2"></textarea>
+    <div class="btns">
+      <button class="btn btn-ghost" onclick="cerrarModal('modalEvento')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarEvento()">Guardar evento</button>
+    </div>
+  </div>
+</div>
+
+<div id="lightbox" class="lightbox" style="display:none" onclick="this.style.display='none'">
+  <img id="lightboxImg"/>
+</div>
+
+<div id="appScreen" style="display:none">
+  <div class="header">
+    <div>
+      <h2>🍺 Ovni Club</h2>
+      <p id="headerSub" style="font-size:11px;opacity:.7;margin-top:1px"></p>
+    </div>
+    <div class="header-right">
+      <span id="turnoBadge" class="turno-badge turno-cerrado" style="cursor:pointer" onclick="showTab(6,null)">Sin turno</span>
+      <span id="syncBadge" class="sync-indicator sync-ok">🟢</span>
+      <button class="dark-toggle" onclick="toggleDark()">🌙</button>
+      <button class="user-chip" onclick="doLogout()" id="userChip">👤 Salir</button>
+    </div>
+  </div>
+  <div class="tabs" id="tabsBar"></div>
+  <div id="tab0"  class="content" style="display:none"></div>
+  <div id="tab1"  class="content" style="display:none"></div>
+  <div id="tab2"  class="content" style="display:none"></div>
+  <div id="tab3"  class="content" style="display:none"></div>
+  <div id="tab4"  class="content" style="display:none"></div>
+  <div id="tab5"  class="content" style="display:none"></div>
+  <div id="tab6"  class="content" style="display:none"></div>
+  <div id="tab7"  class="content" style="display:none"></div>
+  <div id="tab8"  class="content" style="display:none"></div>
+  <div id="tab9"  class="content" style="display:none"></div>
+  <div id="tab10" class="content" style="display:none"></div>
+  <div id="tab11" class="content" style="display:none"></div>
+  <div id="tab12" class="content" style="display:none"></div>
+</div>
+
+<script>
+var AUTH0_DOMAIN="dev-4jhjcq0fv26fns0i.us.auth0.com";
+var AUTH0_CLIENT="Ced9QqXVjPQVhG6lFxNwtVl7F4XsmfEw";
+
+var PERMISOS={
+  admin:     {mesas:true,caja:true,inventario:true,cierre:true,carta:true,usuarios:true,eliminar:true,exportar:true,turnos:true,gastos:true,fiados:true,reservas:true,eventos:true,log:true,analytics:true},
+  supervisor:{mesas:true,caja:true,inventario:true,cierre:true,carta:true,usuarios:false,eliminar:false,exportar:true,turnos:true,gastos:true,fiados:true,reservas:true,eventos:false,log:false,analytics:true},
+  cajero:    {mesas:true,caja:true,inventario:false,cierre:false,carta:false,usuarios:false,eliminar:false,exportar:false,turnos:true,gastos:false,fiados:true,reservas:true,eventos:false,log:false,analytics:false},
+  mesero:    {mesas:true,caja:false,inventario:false,cierre:false,carta:false,usuarios:false,eliminar:false,exportar:false,turnos:false,gastos:false,fiados:false,reservas:true,eventos:false,log:false,analytics:false},
+  inventario:{mesas:false,caja:false,inventario:true,cierre:false,carta:false,usuarios:false,eliminar:false,exportar:false,turnos:false,gastos:false,fiados:false,reservas:false,eventos:false,log:false,analytics:false}
+};
+var ROL_DESC={admin:"Acceso total.",supervisor:"Todo excepto usuarios y log.",cajero:"Mesas, caja, fiados y reservas.",mesero:"Solo mesas y reservas.",inventario:"Solo inventario."};
+var ROL_COLOR={admin:"role-admin",supervisor:"role-supervisor",cajero:"role-cajero",mesero:"role-mesero",inventario:"role-inventario"};
+var ROL_LABEL={admin:"Admin",supervisor:"Supervisor",cajero:"Cajero",mesero:"Mesero",inventario:"Bodega"};
+
+var auth0Client=null,usuarioActual=null,perms={};
+var mesas=[],carta=[],combos=[],inventario=[],usuarios={};
+var turnoActivo=null;
+var mesaActiva=null,editandoEmail=null,editandoProdCartaIdx=null,editandoInvIdx=null,movInvIdx=null,mesaCobrar=null;
+var descItemMesaIdx=null,descItemItemIdx=null;
+var editandoComboIdx=null;
+var catActiva="todas",notaItemIdx=null;
+var syncInterval=null;
+
+var fmt=function(n){return new Intl.NumberFormat("es-CO",{style:"currency",currency:"COP",maximumFractionDigits:0}).format(n);};
+var hora=function(){return new Date().toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit"});};
+var hoy=function(){return new Date().toISOString().split("T")[0];};
+
+function toggleDark(){
+  var isDark=document.documentElement.getAttribute("data-theme")==="dark";
+  document.documentElement.setAttribute("data-theme",isDark?"":"dark");
+  localStorage.setItem("theme",isDark?"light":"dark");
+}
+(function(){document.documentElement.setAttribute("data-theme",localStorage.getItem("theme")||"dark");})();
+
+function setSyncStatus(s){
+  var el=document.getElementById("syncBadge");
+  if(!el)return;
+  if(s==="ok"){el.className="sync-indicator sync-ok";el.textContent="🟢";}
+  else if(s==="loading"){el.className="sync-indicator sync-loading";el.textContent="🔄";}
+  else{el.className="sync-indicator sync-error";el.textContent="🔴";}
+}
+
+async function api(path,method,body){
+  method=method||"GET";
+  setSyncStatus("loading");
+  try{
+    var opts={method:method,headers:{"Content-Type":"application/json"}};
+    if(body)opts.body=JSON.stringify(body);
+    var r=await fetch("/.netlify/functions/api"+path,opts);
+    var data=await r.json();
+    setSyncStatus("ok");
+    return data;
+  }catch(e){setSyncStatus("error");throw e;}
+}
+
+async function initAuth0(){
+  try{
+    auth0Client=await auth0.createAuth0Client({
+      domain:AUTH0_DOMAIN,clientId:AUTH0_CLIENT,
+      cacheLocation:"localstorage",useRefreshTokens:true,
+      authorizationParams:{redirect_uri:window.location.origin}
+    });
+    if(location.search.includes("code=")&&location.search.includes("state=")){
+      try{await auth0Client.handleRedirectCallback();}catch(e){}
+      window.history.replaceState({},document.title,window.location.pathname);
+    }
+    var ok=await auth0Client.isAuthenticated();
+    document.getElementById("loadingScreen").style.display="none";
+    if(ok){var u=await auth0Client.getUser();verificarAcceso(u);}
+    else document.getElementById("loginScreen").style.display="flex";
+  }catch(e){
+    document.getElementById("loadingScreen").innerHTML='<p style="color:#fff">❌ Error. <button onclick="location.reload()" style="padding:8px 16px;border-radius:8px;border:none;cursor:pointer;margin-top:8px">Reintentar</button></p>';
+  }
+}
+
+async function loginConGoogle(){
+  await auth0Client.loginWithRedirect({authorizationParams:{connection:"google-oauth2",redirect_uri:window.location.origin}});
+}
+async function doLogout(){
+  clearInterval(syncInterval);
+  await auth0Client.logout({logoutParams:{returnTo:window.location.origin}});
+}
+
+async function verificarAcceso(user){
+  var email=user.email.toLowerCase();
+  var usersArr=await api("/usuarios");
+  usersArr.forEach(function(u){usuarios[u.email]={nombre:u.nombre,rol:u.rol,foto:u.foto};});
+  if(Object.keys(usuarios).length===0||email==="gabrielrobles2312@gmail.com"){
+    await api("/usuarios","POST",{email:email,nombre:user.name||"Admin",rol:"admin",foto:user.picture||""});
+    usuarios[email]={nombre:user.name||"Admin",rol:"admin",foto:user.picture||""};
+  }
+  var config=usuarios[email];
+  if(!config){
+    document.getElementById("noAccessScreen").style.display="block";
+    document.getElementById("noAccessEmail").textContent="Tu correo: "+email;
+    return;
+  }
+  await api("/usuarios","POST",{email:email,nombre:config.nombre,rol:config.rol,foto:user.picture||config.foto||""});
+  usuarioActual=Object.assign({},config,{email:email,foto:user.picture||config.foto||""});
+  perms=PERMISOS[usuarioActual.rol];
+  document.getElementById("appScreen").style.display="block";
+  await cargarDatos();
+  iniciarApp();
+}
+
+async function cargarDatos(){
+  var results=await Promise.all([api("/mesas"),api("/carta"),api("/combos"),api("/inventario")]);
+  mesas=results[0];carta=results[1];combos=results[2];inventario=results[3];
+  var ta=await api("/turnos?activo=1");
+  turnoActivo=ta&&ta.length?ta[0]:null;
+  actualizarTurnoBadge();
+}
+
+function actualizarTurnoBadge(){
+  var el=document.getElementById("turnoBadge");
+  if(!el)return;
+  if(turnoActivo){
+    el.className="turno-badge turno-abierto";
+    el.textContent="🟢 "+turnoActivo.nombre;
+  }else{
+    el.className="turno-badge turno-cerrado";
+    el.textContent="Sin turno";
+  }
+}
+
+function iniciarApp(){
+  document.getElementById("headerSub").textContent=ROL_LABEL[usuarioActual.rol]+" — "+usuarioActual.nombre;
+  document.getElementById("userChip").innerHTML='<img src="'+usuarioActual.foto+'" onerror="this.style.display=\'none\'"/> '+usuarioActual.nombre+' · Salir';
+  var tabs=[];
+  if(perms.mesas)      tabs.push({id:0,label:"🪑 Mesas"});
+  if(perms.caja)       tabs.push({id:1,label:"💵 Caja"});
+  if(perms.inventario) tabs.push({id:2,label:"📦 Inventario"});
+  if(perms.cierre)     tabs.push({id:3,label:"📊 Cierre"});
+  if(perms.analytics)  tabs.push({id:4,label:"📈 Analytics"});
+  if(perms.carta)      tabs.push({id:5,label:"🍹 Carta"});
+  if(perms.turnos)     tabs.push({id:6,label:"🕐 Turnos"});
+  if(perms.gastos)     tabs.push({id:7,label:"💸 Gastos"});
+  if(perms.fiados)     tabs.push({id:8,label:"🤝 Fiados"});
+  if(perms.reservas)   tabs.push({id:9,label:"📅 Reservas"});
+  if(perms.eventos)    tabs.push({id:10,label:"🎉 Eventos"});
+  if(perms.log)        tabs.push({id:11,label:"📋 Log"});
+  if(perms.usuarios)   tabs.push({id:12,label:"👥 Usuarios"});
+  var bar=document.getElementById("tabsBar");bar.innerHTML="";
+  tabs.forEach(function(t,i){
+    var btn=document.createElement("button");
+    btn.className="tab"+(i===0?" active":"");
+    btn.textContent=t.label;
+    btn.onclick=(function(tid){return function(){showTab(tid,btn);};})(t.id);
+    bar.appendChild(btn);
+  });
+  if(tabs.length)showTab(tabs[0].id,bar.querySelector(".tab"));
+  syncInterval=setInterval(async function(){
+    try{
+      var m=await api("/mesas");mesas=m;
+      if(mesaActiva!==null)abrirMesa(mesaActiva);
+      else if(document.getElementById("tab0").style.display!=="none")renderMesas();
+    }catch(e){}
+  },8000);
+}
+
+function showTab(i,btn){
+  for(var n=0;n<=12;n++)document.getElementById("tab"+n).style.display="none";
+  document.querySelectorAll(".tab").forEach(function(b){b.classList.remove("active");});
+  document.getElementById("tab"+i).style.display="block";
+  if(btn)btn.classList.add("active");
+  mesaActiva=null;
+  var fns={0:renderMesas,1:renderCaja,2:renderInventario,3:renderCierre,4:renderAnalytics,5:renderCarta,6:renderTurnos,7:renderGastos,8:renderFiados,9:renderReservas,10:renderEventos,11:renderLog,12:renderUsuarios};
+  if(fns[i])fns[i]();
+}
+function cerrarModal(id){document.getElementById(id).style.display="none";}
+
+// ===== MESAS =====
+function mesaTotal(mesa){
+  return(mesa.comanda||[]).reduce(function(s,i){
+    var p=i.precio*(1-(i.descPct||0)/100);
+    return s+(i.esCortesia?0:p*i.cant);
+  },0);
+}
+function mesaCount(mesa){return(mesa.comanda||[]).reduce(function(s,i){return s+i.cant;},0);}
+
+function renderMesas(){
+  mesaActiva=null;
+  var ocupadas=mesas.filter(function(m){return m.estado!=="libre";}).length;
+  var enConsumo=mesas.reduce(function(s,m){return s+mesaTotal(m);},0);
+  var html='<div class="kpi-grid" style="margin-bottom:12px">';
+  html+='<div class="kpi-box"><small>🪑 Mesas ocupadas</small><b>'+ocupadas+"/"+mesas.length+"</b></div>";
+  html+='<div class="kpi-box"><small>💰 En consumo</small><b style="color:var(--primary)">'+fmt(enConsumo)+"</b></div>";
+  // reservas hoy
+  html+='</div><div class="mesas-grid">';
+  mesas.forEach(function(m,i){
+    var estado=m.estado||"libre";
+    var bc=estado==="libre"?"bg":estado==="pagando"?"by":"bp";
+    var label=estado==="libre"?"Libre":estado==="pagando"?"Pagando":"Ocupada";
+    html+='<div class="mesa-card '+estado+'" onclick="abrirMesa('+i+')">';
+    html+='<div class="mesa-num">'+m.num+"</div>";
+    html+='<span class="mesa-badge '+bc+'">'+label+"</span>";
+    if(estado!=="libre"){
+      html+='<div class="mesa-total">'+fmt(mesaTotal(m))+"</div>";
+      html+='<div class="mesa-info">'+mesaCount(m)+" items · "+(m.mesero||"")+"</div>";
+    }
+    html+="</div>";
+  });
+  html+="</div>";
+  html+='<button class="btn btn-ghost btn-sm" style="margin-top:12px" onclick="agregarMesa()">➕ Agregar mesa</button>';
+  document.getElementById("tab0").innerHTML=html;
+}
+
+async function agregarMesa(){
+  var num=Math.max.apply(null,mesas.map(function(m){return m.num;}).concat([0]))+1;
+  await api("/mesas","POST",{num:num});
+  mesas=await api("/mesas");renderMesas();
+}
+
+function abrirMesa(idx){
+  mesaActiva=idx;
+  var mesa=mesas[idx];
+  if(!mesa.comanda)mesa.comanda=[];
+  var cats=["todas"];
+  carta.forEach(function(p){if(!p.agotado&&cats.indexOf(p.categoria)===-1)cats.push(p.categoria);});
+  if(combos.length)cats.push("⭐ Combos");
+  var filtrada=catActiva==="todas"?carta:catActiva==="⭐ Combos"?[]:carta.filter(function(p){return p.categoria===catActiva;});
+  var filtradaCombos=catActiva==="todas"||catActiva==="⭐ Combos"?combos:[];
+
+  var html='<button class="btn btn-ghost btn-sm no-print" onclick="volverMesas()" style="margin-bottom:12px">← Mesas</button>';
+  html+='<div class="comanda-wrap"><div><div class="card">';
+  html+='<div class="card-title">Mesa '+mesa.num+' — Agregar productos</div>';
+  html+='<div class="carta-cats">';
+  cats.forEach(function(c){
+    html+='<button class="cat-btn '+(catActiva===c?"active":"")+'" onclick="setCat(\''+c+'\','+idx+')">'+(c==="todas"?"Todos":c)+"</button>";
+  });
+  html+="</div><div class='carta-grid'>";
+  filtrada.forEach(function(p){
+    if(p.agotado){
+      html+='<div class="prod-btn agotado"><div class="prod-agotado-tag">AGOTADO</div>';
+    }else{
+      html+='<div class="prod-btn" onclick="addToComanda('+idx+','+p.id+',\'carta\')">';
+    }
+    html+='<div class="prod-emoji">'+(p.emoji||"🍹")+"</div>";
+    html+='<div class="prod-nombre">'+p.nombre+"</div>";
+    html+='<div class="prod-precio">'+fmt(p.precio)+"</div></div>";
+  });
+  filtradaCombos.forEach(function(c){
+    html+='<div class="prod-btn" onclick="addToComanda('+idx+','+c.id+',\'combo\')" style="border-color:var(--warn)">';
+    html+='<div class="prod-emoji">'+(c.emoji||"⭐")+"</div>";
+    html+='<div class="prod-nombre">'+c.nombre+"</div>";
+    html+='<div class="prod-precio">'+fmt(c.precio)+"</div></div>";
+  });
+  html+="</div></div></div>";
+
+  html+='<div><div class="ticket">';
+  html+='<div class="ticket-title">🧾 Mesa '+mesa.num+'<span style="font-size:11px;color:var(--text3);font-weight:400">'+(mesa.abierta_en?"Abierta "+mesa.abierta_en:"")+"</span></div>";
+  if(!mesa.comanda.length){
+    html+='<div class="ticket-empty">Sin productos aún.</div>';
+  }else{
+    mesa.comanda.forEach(function(item,ii){
+      html+='<div class="ticket-item">';
+      html+='<span style="font-size:20px">'+(item.emoji||"🍹")+"</span>";
+      html+='<div class="ti-info"><div class="ti-name">'+item.nombre;
+      if(item.esCortesia)html+=' <span class="badge bg">cortesía</span>';
+      else if(item.descPct)html+=' <span class="badge by">-'+item.descPct+'%</span>';
+      html+="</div>";
+      if(item.nota)html+='<div class="ti-note">📝 '+item.nota+"</div>";
+      var notaEsc=(item.nota||"").replace(/'/g,"\\'");
+      html+='<div class="ticket-qty">';
+      html+='<button class="qty-btn qty-minus" onclick="cambiarCant('+idx+','+ii+',-1)">−</button>';
+      html+='<b>'+item.cant+"</b>";
+      html+='<button class="qty-btn qty-plus" onclick="cambiarCant('+idx+','+ii+',1)">+</button>';
+      html+='<button class="note-btn" onclick="abrirNota('+idx+','+ii+',\''+notaEsc+'\')">📝</button>';
+      html+='<button class="note-btn" onclick="abrirDescItem('+idx+','+ii+')">🏷️</button>';
+      html+="</div></div>";
+      var precio=item.esCortesia?0:item.precio*(1-(item.descPct||0)/100)*item.cant;
+      html+='<span class="ti-price">'+(item.esCortesia?"$0":fmt(precio))+"</span></div>";
+    });
+    html+='<div class="ticket-total"><span>Total</span><span style="color:var(--primary)">'+fmt(mesaTotal(mesa))+"</span></div>";
+    html+='<button class="btn btn-success btn-full" onclick="abrirCobrar('+idx+')">💰 Cobrar '+fmt(mesaTotal(mesa))+"</button>";
+    html+='<button class="btn btn-danger btn-full" style="margin-top:6px" onclick="cancelarMesa('+idx+')">🗑️ Cancelar mesa</button>';
+  }
+  html+="</div></div></div>";
+  document.getElementById("tab0").innerHTML=html;
+}
+
+async function volverMesas(){mesaActiva=null;mesas=await api("/mesas");renderMesas();}
+function setCat(cat,idx){catActiva=cat;abrirMesa(idx);}
+
+async function addToComanda(mesaIdx,prodId,tipo){
+  var prod=null;
+  if(tipo==="combo"){
+    for(var i=0;i<combos.length;i++){if(combos[i].id===prodId){prod=combos[i];break;}}
+  }else{
+    for(var i=0;i<carta.length;i++){if(carta[i].id===prodId){prod=carta[i];break;}}
+  }
+  if(!prod)return;
+  var mesa=mesas[mesaIdx];
+  if(!mesa.comanda)mesa.comanda=[];
+  var exist=null;
+  for(var j=0;j<mesa.comanda.length;j++){
+    if(mesa.comanda[j].prodId===prodId&&mesa.comanda[j].tipo===tipo){exist=mesa.comanda[j];break;}
+  }
+  if(exist&&!exist.esCortesia&&!exist.descPct){exist.cant++;}
+  else{mesa.comanda.push({prodId:prodId,tipo:tipo||"carta",nombre:prod.nombre,precio:prod.precio,emoji:prod.emoji||"🍹",cant:1,nota:"",esCortesia:false,descPct:0});}
+  if(mesa.estado==="libre"){mesa.estado="ocupada";mesa.abierta_en=hora();mesa.mesero=usuarioActual.nombre;mesa.mesero_email=usuarioActual.email;}
+  await syncMesa(mesaIdx);abrirMesa(mesaIdx);
+}
+
+async function cambiarCant(mesaIdx,itemIdx,delta){
+  var mesa=mesas[mesaIdx];
+  mesa.comanda[itemIdx].cant+=delta;
+  if(mesa.comanda[itemIdx].cant<=0)mesa.comanda.splice(itemIdx,1);
+  if(!mesa.comanda.length){mesa.estado="libre";mesa.abierta_en=null;mesa.mesero=null;}
+  await syncMesa(mesaIdx);abrirMesa(mesaIdx);
+}
+
+function abrirNota(mesaIdx,itemIdx,notaActual){
+  notaItemIdx={mesaIdx:mesaIdx,itemIdx:itemIdx};
+  document.getElementById("notaTexto").value=notaActual||"";
+  document.getElementById("modalNota").style.display="flex";
+}
+async function guardarNota(){
+  var mi=notaItemIdx;
+  mesas[mi.mesaIdx].comanda[mi.itemIdx].nota=document.getElementById("notaTexto").value.trim();
+  cerrarModal("modalNota");await syncMesa(mi.mesaIdx);abrirMesa(mi.mesaIdx);
+}
+
+function abrirDescItem(mesaIdx,itemIdx){
+  descItemMesaIdx=mesaIdx;descItemItemIdx=itemIdx;
+  var item=mesas[mesaIdx].comanda[itemIdx];
+  document.getElementById("descItemNombre").textContent=item.nombre;
+  document.getElementById("descTipo").value="cortesia";
+  document.getElementById("descPct").style.display="none";
+  document.getElementById("modalDescItem").style.display="flex";
+}
+document.getElementById("descTipo").addEventListener("change",function(){
+  document.getElementById("descPct").style.display=this.value==="descuento"?"block":"none";
+});
+async function aplicarDescItem(){
+  var tipo=document.getElementById("descTipo").value;
+  var item=mesas[descItemMesaIdx].comanda[descItemItemIdx];
+  if(tipo==="cortesia"){item.esCortesia=true;item.descPct=0;}
+  else{item.esCortesia=false;item.descPct=Number(document.getElementById("descPct").value)||0;}
+  cerrarModal("modalDescItem");await syncMesa(descItemMesaIdx);abrirMesa(descItemMesaIdx);
+}
+
+async function syncMesa(idx){
+  var m=mesas[idx];
+  await api("/mesas/"+m.num,"PUT",{estado:m.estado,comanda:m.comanda||[],abierta_en:m.abierta_en||null,mesero:m.mesero||null,mesero_email:m.mesero_email||null});
+}
+
+async function cancelarMesa(idx){
+  if(!confirm("¿Cancelar y limpiar esta mesa?"))return;
+  var m=mesas[idx];m.estado="libre";m.comanda=[];m.abierta_en=null;m.mesero=null;
+  await syncMesa(idx);mesas=await api("/mesas");renderMesas();
+}
+
+// ===== COBRAR =====
+document.getElementById("cobrarFiar").addEventListener("change",function(){
+  document.getElementById("cobrarCliente").style.display=this.checked?"block":"none";
+});
+document.getElementById("cobrarDescuento").addEventListener("input",actualizarTotalCobrar);
+document.getElementById("cobrarPropina").addEventListener("input",actualizarTotalCobrar);
+
+function actualizarTotalCobrar(){
+  if(mesaCobrar===null)return;
+  var mesa=mesas[mesaCobrar];
+  var base=mesaTotal(mesa);
+  var desc=Number(document.getElementById("cobrarDescuento").value)||0;
+  var prop=Number(document.getElementById("cobrarPropina").value)||0;
+  var final=base*(1-desc/100)+prop;
+  document.getElementById("cobrarTotal").textContent="Total: "+fmt(final);
+}
+
+function abrirCobrar(idx){
+  mesaCobrar=idx;
+  var mesa=mesas[idx];
+  document.getElementById("cobrarMesaNum").textContent=mesa.num;
+  var html="";
+  (mesa.comanda||[]).forEach(function(i){
+    var nota=i.nota?' <em style="font-size:11px;color:var(--text3)">('+i.nota+")</em>":"";
+    var precio=i.esCortesia?0:i.precio*(1-(i.descPct||0)/100)*i.cant;
+    html+='<div class="top-item"><span>'+i.emoji+" "+i.nombre+nota+" x"+i.cant+(i.esCortesia?" (cortesía)":i.descPct?" (-"+i.descPct+"%)":"")+"</span>";
+    html+='<span style="font-weight:800;color:var(--primary)">'+(i.esCortesia?"$0":fmt(precio))+"</span></div>";
+  });
+  html+='<div style="display:flex;justify-content:space-between;font-size:18px;font-weight:900;padding:12px 0 0;color:var(--text)"><span>Subtotal</span><span style="color:var(--primary)">'+fmt(mesaTotal(mesa))+"</span></div>";
+  document.getElementById("cobrarResumen").innerHTML=html;
+  document.getElementById("cobrarComp").value="";
+  document.getElementById("cobrarDescuento").value="0";
+  document.getElementById("cobrarPropina").value="0";
+  document.getElementById("cobrarFiar").checked=false;
+  document.getElementById("cobrarCliente").style.display="none";
+  document.getElementById("cobrarCliente").value="";
+  actualizarTotalCobrar();
+  document.getElementById("modalCobrar").style.display="flex";
+}
+
+async function confirmarCobro(){
+  var mesa=mesas[mesaCobrar];
+  var metodo=document.getElementById("cobrarMetodo").value;
+  var descGlobal=Number(document.getElementById("cobrarDescuento").value)||0;
+  var propina=Number(document.getElementById("cobrarPropina").value)||0;
+  var esFiado=document.getElementById("cobrarFiar").checked;
+  var clienteFiado=document.getElementById("cobrarCliente").value.trim();
+  var compFile=document.getElementById("cobrarComp");
+  var comp=null;
+  if(compFile.files[0]){
+    comp=await new Promise(function(res){var r=new FileReader();r.onload=function(e){res(e.target.result);};r.readAsDataURL(compFile.files[0]);});
+  }
+  var fecha=hoy();var h=hora();
+  var totalMesa=mesaTotal(mesa)*(1-descGlobal/100)+propina;
+
+  if(esFiado&&clienteFiado){
+    await api("/fiados","POST",{fecha:fecha,hora:h,cliente:clienteFiado,monto:totalMesa,descripcion:"Mesa "+mesa.num,cajero:usuarioActual.nombre,mesa:mesa.num});
+  }
+
+  for(var i=0;i<(mesa.comanda||[]).length;i++){
+    var item=mesa.comanda[i];
+    var precioItem=item.esCortesia?0:item.precio*(1-(item.descPct||0)/100);
+    var totalItem=precioItem*item.cant*(1-descGlobal/100);
+    if(i===mesa.comanda.length-1)totalItem+=propina;
+    await api("/ventas","POST",{
+      fecha:fecha,hora:h,mesa:mesa.num,producto:item.nombre,
+      cantidad:item.cant,precio:item.precio,total:Math.round(totalItem),
+      pago:esFiado?"Fiado":metodo,cajero:usuarioActual.nombre,cajero_email:usuarioActual.email,
+      comp:i===0?comp:null,turno_id:turnoActivo?turnoActivo.id:null,
+      descuento:Math.round((item.descPct||0)+(descGlobal||0)),
+      propina:i===0?propina:0,es_cortesia:item.esCortesia||false
+    });
+  }
+  mesa.estado="libre";mesa.comanda=[];mesa.abierta_en=null;mesa.mesero=null;
+  await syncMesa(mesaCobrar);cerrarModal("modalCobrar");
+  mesas=await api("/mesas");renderMesas();
+}
+
+function imprimirCuenta(){
+  var mesa=mesas[mesaCobrar];
+  var items="";
+  (mesa.comanda||[]).forEach(function(i){
+    var nota=i.nota?'<br/><em style="font-size:11px;color:#999">'+i.nota+"</em>":"";
+    var precio=i.esCortesia?0:i.precio*(1-(i.descPct||0)/100)*i.cant;
+    items+='<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #eee">';
+    items+="<span>"+i.emoji+" "+i.nombre+nota+" x"+i.cant+"</span>";
+    items+="<span>"+(i.esCortesia?"CORTESÍA":fmt(precio))+"</span></div>";
+  });
+  var html="<html><body style='font-family:monospace;padding:20px;max-width:300px'>";
+  html+="<h2 style='text-align:center'>🍺 Ovni Club</h2>";
+  html+="<p style='text-align:center;font-size:12px;color:#999'>Mesa "+mesa.num+" · "+hora()+" · "+hoy()+"</p><hr/>";
+  html+=items+"<hr/>";
+  html+="<div style='display:flex;justify-content:space-between;font-size:18px;font-weight:900;padding:8px 0'><span>TOTAL</span><span>"+fmt(mesaTotal(mesa))+"</span></div>";
+  html+="<p style='text-align:center;color:#999;font-size:11px;margin-top:20px'>¡Gracias por su visita!</p>";
+  html+="<scri"+"pt>window.print();<\/scri"+"pt></body></html>";
+  var win=window.open("","_blank","width=400,height=600");win.document.write(html);
+}
+
+// ===== CAJA =====
+async function renderCaja(){
+  var ventas=await api("/ventas?fecha="+hoy());
+  var tv=ventas.reduce(function(s,v){return s+Number(v.total||0);},0);
+  var propinas=ventas.reduce(function(s,v){return s+Number(v.propina||0);},0);
+  var mesasSet={};ventas.forEach(function(v){mesasSet[v.mesa]=1;});
+  var html='<div class="kpi-grid">';
+  html+='<div class="kpi-box"><small>💰 Total ventas</small><b style="color:var(--primary)">'+fmt(tv)+"</b></div>";
+  html+='<div class="kpi-box"><small>🔢 Comandas</small><b style="color:var(--success)">'+Object.keys(mesasSet).length+"</b></div>";
+  html+='<div class="kpi-box"><small>🎁 Propinas</small><b style="color:var(--warn-dark)">'+fmt(propinas)+"</b></div></div>";
+  html+='<div class="card"><div class="card-title">Ventas del día — '+hoy()+' ';
+  if(perms.exportar)html+='<button class="btn btn-success btn-sm no-print" onclick="exportCSV()">⬇️ CSV</button>';
+  html+="</div><div class='wrap'><table><thead><tr><th>Mesa</th><th>Producto</th><th>Cant.</th><th>Total</th><th>Pago</th><th>Hora</th><th>Cajero</th><th>🧾</th>"+(perms.eliminar?"<th></th>":"")+"</tr></thead><tbody>";
+  if(!ventas.length)html+='<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Sin ventas hoy</td></tr>';
+  ventas.forEach(function(v){
+    html+="<tr>";
+    html+='<td><span class="badge bp">M'+(v.mesa||"—")+"</span></td>";
+    html+="<td><b>"+v.producto+"</b>"+(v.es_cortesia?'<span class="badge bg" style="margin-left:4px">cortesía</span>':v.descuento?'<span class="badge by" style="margin-left:4px">-'+v.descuento+'%</span>':"")+"</td>";
+    html+="<td>"+v.cantidad+"</td>";
+    html+='<td style="color:var(--primary);font-weight:800">'+fmt(v.total)+"</td>";
+    html+="<td>"+v.pago+"</td>";
+    html+='<td style="font-size:11px;color:var(--text3)">'+(v.hora||"")+"</td>";
+    html+='<td><span class="badge role-cajero">'+(v.cajero||"")+"</span></td>";
+    html+="<td>"+(v.comp?'<img src="'+v.comp+'" style="width:32px;height:32px;border-radius:6px;cursor:pointer;object-fit:cover" onclick="document.getElementById(\'lightboxImg\').src=this.src;document.getElementById(\'lightbox\').style.display=\'flex\'"/>':"<span style='color:var(--text3)'>—</span>")+"</td>";
+    if(perms.eliminar)html+='<td><button class="btn btn-danger btn-sm" onclick="eliminarVenta('+v.id+')">✕</button></td>';
+    html+="</tr>";
+  });
+  html+='<tr class="tfoot"><td colspan="'+(perms.eliminar?7:6)+'">TOTAL</td><td style="font-size:15px">'+fmt(tv)+"</td><td colspan='2'></td></tr>";
+  html+="</tbody></table></div></div>";
+  document.getElementById("tab1").innerHTML=html;
+}
+async function eliminarVenta(id){
+  if(!confirm("¿Eliminar esta venta?"))return;
+  await api("/ventas/"+id,"DELETE");renderCaja();
+}
+async function exportCSV(){
+  var ventas=await api("/ventas?fecha="+hoy());
+  var rows=["Fecha,Hora,Mesa,Producto,Cant,Total,Pago,Cajero,Descuento,Propina,Cortesia"];
+  ventas.forEach(function(v){rows.push(v.fecha+","+(v.hora||"")+","+v.mesa+","+v.producto+","+v.cantidad+","+v.total+","+v.pago+","+(v.cajero||"")+","+(v.descuento||0)+","+(v.propina||0)+","+(v.es_cortesia?"Si":"No"));});
+  var tv=ventas.reduce(function(s,v){return s+Number(v.total||0);},0);
+  rows.push("\nTOTAL,,,,,"+tv+",,,,,");
+  var blob=new Blob([rows.join("\n")],{type:"text/csv;charset=utf-8;"});
+  var a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download="ovnibar_"+hoy()+".csv";a.click();
+}
+
+// ===== INVENTARIO =====
+async function renderInventario(){
+  var inv=await api("/inventario");inventario=inv;
+  var bajos=inv.filter(function(i){return i.stock<i.minimo;}).length;
+  var html='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">';
+  html+=bajos>0?'<span class="badge br">⚠️ '+bajos+' bajo mínimo</span>':'<span class="badge bg">✅ Stock OK</span>';
+  html+='<button class="btn btn-primary btn-sm" onclick="abrirModalInvProd(null)">➕ Agregar</button></div>';
+  html+='<div class="card"><div class="wrap"><table><thead><tr><th>Producto</th><th>Stock</th><th>Mínimo</th><th>Estado</th><th>Último mov.</th><th>Acciones</th></tr></thead><tbody>';
+  inv.forEach(function(item,i){
+    var ok=item.stock>=item.minimo;
+    var movs=Array.isArray(item.movs)?item.movs:(typeof item.movs==="string"?JSON.parse(item.movs||"[]"):[]);
+    var last=movs.length?movs[movs.length-1]:null;
+    html+="<tr><td><b>"+item.producto+"</b></td>";
+    html+='<td><b style="font-size:16px;color:'+(ok?"var(--text)":"var(--danger)")+'">'+item.stock+"</b></td>";
+    html+='<td style="color:var(--text3)">'+item.minimo+"</td>";
+    html+='<td><span class="badge '+(ok?"bg":"br")+'">'+(ok?"✅ OK":"⚠️ Bajo")+"</span></td>";
+    html+="<td style='font-size:11px'>"+(last?'<span style="color:'+(last.tipo==="entrada"?"var(--success)":"var(--danger)")+'">'+(last.tipo==="entrada"?"📥 +":"📤 -")+last.cant+"</span> · "+last.hora+" · <b>"+last.usuario+"</b>":"-")+"</td>";
+    html+='<td><div style="display:flex;gap:5px;flex-wrap:wrap">';
+    html+='<button class="btn btn-success btn-sm" onclick="abrirModalMov('+i+')">📥 Mover</button>';
+    html+='<button class="btn btn-warn btn-sm" onclick="abrirModalInvProd('+i+')">✏️</button>';
+    if(perms.eliminar)html+='<button class="btn btn-danger btn-sm" onclick="eliminarInvProd('+i+')">✕</button>';
+    html+="</div></td></tr>";
+  });
+  html+="</tbody></table></div></div>";
+  document.getElementById("tab2").innerHTML=html;
+}
+function abrirModalInvProd(idx){
+  editandoInvIdx=idx;
+  document.getElementById("invProdTitulo").textContent=idx===null?"➕ Agregar":"✏️ Editar";
+  document.getElementById("ipNombre").value=idx===null?"":inventario[idx].producto;
+  document.getElementById("ipStock").value=idx===null?"":inventario[idx].stock;
+  document.getElementById("ipMinimo").value=idx===null?"":inventario[idx].minimo;
+  document.getElementById("modalInvProd").style.display="flex";
+}
+async function guardarInvProd(){
+  var n=document.getElementById("ipNombre").value.trim();
+  var s=Number(document.getElementById("ipStock").value)||0;
+  var m=Number(document.getElementById("ipMinimo").value)||0;
+  if(!n){alert("Ingresa el nombre");return;}
+  if(editandoInvIdx===null){await api("/inventario","POST",{producto:n,stock:s,minimo:m});}
+  else{var item=inventario[editandoInvIdx];await api("/inventario/"+item.id,"PUT",{producto:n,stock:s,minimo:m,movs:Array.isArray(item.movs)?item.movs:[]});}
+  cerrarModal("modalInvProd");renderInventario();
+}
+async function eliminarInvProd(i){
+  if(!confirm("¿Eliminar?"))return;
+  await api("/inventario/"+inventario[i].id,"DELETE");renderInventario();
+}
+function abrirModalMov(i){
+  movInvIdx=i;
+  document.getElementById("movProdLabel").textContent=inventario[i].producto+" — Stock: "+inventario[i].stock;
+  document.getElementById("movCant").value="";document.getElementById("movNota").value="";
+  document.getElementById("modalMov").style.display="flex";
+}
+async function guardarMov(){
+  var tipo=document.getElementById("movTipo").value;
+  var cant=Number(document.getElementById("movCant").value)||0;
+  var nota=document.getElementById("movNota").value.trim();
+  if(cant<1){alert("Cantidad inválida");return;}
+  var item=inventario[movInvIdx];
+  var movs=Array.isArray(item.movs)?item.movs:(typeof item.movs==="string"?JSON.parse(item.movs||"[]"):[]);
+  movs.push({ts:Date.now(),tipo:tipo,cant:cant,nota:nota,usuario:usuarioActual.nombre,hora:hora()});
+  var newStock=tipo==="entrada"?item.stock+cant:Math.max(0,item.stock-cant);
+  await api("/inventario/"+item.id,"PUT",{producto:item.producto,stock:newStock,minimo:item.minimo,movs:movs});
+  cerrarModal("modalMov");renderInventario();
+}
+
+// ===== CIERRE =====
+async function renderCierre(){
+  var fechaEl='<input type="date" id="cierreFecha" value="'+hoy()+'" onchange="renderCierre()" style="padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px"/>';
+  var fechaSel=document.getElementById("cierreFecha")?document.getElementById("cierreFecha").value:hoy();
+  var ventas=await api("/ventas?fecha="+fechaSel);
+  var gastos=await api("/gastos?fecha="+fechaSel);
+  var tv=ventas.reduce(function(s,v){return s+Number(v.total||0);},0);
+  var tg=gastos.reduce(function(s,g){return s+Number(g.monto||0);},0);
+  var ganancia=tv-tg;
+  var porProd={},porCajero={},porPago={},mesasSet={};
+  ventas.forEach(function(v){
+    if(!porProd[v.producto])porProd[v.producto]={cant:0,total:0};
+    porProd[v.producto].cant+=Number(v.cantidad);porProd[v.producto].total+=Number(v.total);
+    var k=v.cajero||"?";if(!porCajero[k])porCajero[k]={cant:0,total:0};
+    porCajero[k].cant++;porCajero[k].total+=Number(v.total);
+    if(!porPago[v.pago])porPago[v.pago]=0;porPago[v.pago]+=Number(v.total);
+    mesasSet[v.mesa]=1;
+  });
+  var html='<div class="card"><div class="card-title">📊 Cierre del día '+fechaEl+"</div>";
+  html+='<div class="kpi-grid">';
+  html+='<div class="kpi-box" style="border-color:var(--primary)"><small>🧾 Ventas</small><b style="color:var(--primary)">'+fmt(tv)+"</b></div>";
+  html+='<div class="kpi-box" style="border-color:var(--danger)"><small>💸 Gastos</small><b style="color:var(--danger)">'+fmt(tg)+"</b></div>";
+  html+='<div class="kpi-box" style="border-color:var(--success)"><small>💰 Ganancia neta</small><b style="color:var(--success)">'+fmt(ganancia)+"</b></div>";
+  html+='<div class="kpi-box"><small>🪑 Mesas</small><b>'+Object.keys(mesasSet).length+"</b></div></div>";
+  html+="<h5 style='margin-bottom:8px'>👤 Por cajero</h5>";
+  Object.entries(porCajero).forEach(function(e){html+='<div class="top-item"><span><b>'+e[0]+"</b></span><span style='color:var(--text3)'>"+e[1].cant+" ventas</span><span style='color:var(--primary);font-weight:800'>"+fmt(e[1].total)+"</span></div>";});
+  html+="<h5 style='margin:12px 0 8px'>🏆 Top productos</h5>";
+  Object.entries(porProd).sort(function(a,b){return b[1].total-a[1].total;}).slice(0,8).forEach(function(e){html+='<div class="top-item"><span><b>'+e[0]+"</b></span><span style='color:var(--text3)'>x"+e[1].cant+"</span><span style='color:var(--primary);font-weight:800'>"+fmt(e[1].total)+"</span></div>";});
+  html+="<h5 style='margin:12px 0 8px'>💵 Por método de pago</h5>";
+  Object.entries(porPago).forEach(function(e){html+='<div class="top-item"><span><b>'+e[0]+"</b></span><span style='color:var(--success);font-weight:800'>"+fmt(e[1])+"</span></div>";});
+  if(gastos.length){
+    html+="<h5 style='margin:12px 0 8px'>💸 Gastos del día</h5>";
+    gastos.forEach(function(g){html+='<div class="top-item"><span><b>'+g.descripcion+"</b> <span style='color:var(--text3)'>"+g.categoria+"</span></span><span style='color:var(--danger);font-weight:800'>"+fmt(g.monto)+"</span></div>";});
+  }
+  if(perms.exportar)html+='<button class="btn btn-primary btn-full no-print" onclick="exportCSV()">⬇️ Exportar CSV</button>';
+  html+="</div>";
+  document.getElementById("tab3").innerHTML=html;
+}
+
+// ===== ANALYTICS =====
+async function renderAnalytics(){
+  var hoy7=new Date();var hace7=new Date();hace7.setDate(hace7.getDate()-6);
+  var desde=hace7.toISOString().split("T")[0];var hasta=hoy7.toISOString().split("T")[0];
+  var data=await api("/analytics/resumen?desde="+desde+"&hasta="+hasta);
+  var html='<div class="card"><div class="card-title">📈 Últimos 7 días</div>';
+  html+='<div class="kpi-grid">';
+  var tv7=data.ventas.reduce(function(s,v){return s+Number(v.total||0);},0);
+  var tc7=data.ventas.reduce(function(s,v){return s+Number(v.transacciones||0);},0);
+  html+='<div class="kpi-box"><small>💰 Total 7 días</small><b style="color:var(--primary)">'+fmt(tv7)+"</b></div>";
+  html+='<div class="kpi-box"><small>🔢 Transacciones</small><b>'+tc7+"</b></div>";
+  html+='<div class="kpi-box"><small>📊 Promedio día</small><b style="color:var(--success)">'+fmt(tv7/7)+"</b></div></div>";
+  // Gráfica de barras
+  if(data.ventas.length){
+    var max=Math.max.apply(null,data.ventas.map(function(v){return Number(v.total||0);}));
+    html+="<h5 style='margin-bottom:8px'>Ventas por día</h5><div class='chart-bar'>";
+    data.ventas.forEach(function(v){
+      var h=max>0?Math.round(Number(v.total||0)/max*100):0;
+      var dia=v.fecha?v.fecha.slice(5):"";
+      html+='<div style="flex:1;display:flex;flex-direction:column;align-items:center">';
+      html+='<div class="bar" style="height:'+h+'px" title="'+fmt(Number(v.total||0))+'"></div>';
+      html+='<div class="bar-label">'+dia+"</div></div>";
+    });
+    html+="</div>";
+  }
+  html+="<h5 style='margin:12px 0 8px'>🏆 Top productos</h5>";
+  (data.topProds||[]).forEach(function(p){
+    html+='<div class="top-item"><span><b>'+p.producto+"</b></span><span style='color:var(--text3)'>x"+p.cant+"</span><span style='color:var(--primary);font-weight:800'>"+fmt(Number(p.total))+"</span></div>";
+  });
+  html+="<h5 style='margin:12px 0 8px'>💵 Por método de pago</h5>";
+  (data.porPago||[]).forEach(function(p){
+    html+='<div class="top-item"><span><b>'+p.pago+"</b></span><span style='color:var(--success);font-weight:800'>"+fmt(Number(p.total))+"</span></div>";
+  });
+  if(data.porHora&&data.porHora.length){
+    html+="<h5 style='margin:12px 0 8px'>🕐 Ventas por hora</h5><div class='chart-bar'>";
+    var maxH=Math.max.apply(null,data.porHora.map(function(v){return Number(v.total||0);}));
+    data.porHora.forEach(function(v){
+      var hh=maxH>0?Math.round(Number(v.total||0)/maxH*100):0;
+      html+='<div style="flex:1;display:flex;flex-direction:column;align-items:center">';
+      html+='<div class="bar" style="height:'+hh+'px;background:var(--success)" title="'+fmt(Number(v.total||0))+'"></div>';
+      html+='<div class="bar-label">'+(v.h||"")+"h</div></div>";
+    });
+    html+="</div>";
+  }
+  html+="</div>";
+  document.getElementById("tab4").innerHTML=html;
+}
+
+// ===== CARTA =====
+async function renderCarta(){
+  var c=await api("/carta");carta=c;
+  var cb=await api("/combos");combos=cb;
+  var cats=[];
+  carta.forEach(function(p){if(cats.indexOf(p.categoria)===-1)cats.push(p.categoria);});
+  var html='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
+  html+='<b>🍹 Carta ('+carta.length+' productos)</b>';
+  html+='<div style="display:flex;gap:6px"><button class="btn btn-primary btn-sm" onclick="abrirModalProdCarta(null)">➕ Producto</button>';
+  html+='<button class="btn btn-warn btn-sm" onclick="abrirModalCombo(null)">➕ Combo</button></div></div>';
+  cats.forEach(function(cat){
+    html+='<div class="card"><div class="card-title">'+cat+"</div><div class='wrap'><table><thead><tr><th>Emoji</th><th>Producto</th><th>Precio</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>";
+    carta.filter(function(p){return p.categoria===cat;}).forEach(function(p){
+      html+="<tr><td style='font-size:20px'>"+(p.emoji||"🍹")+"</td><td><b>"+p.nombre+"</b></td>";
+      html+='<td style="color:var(--primary);font-weight:800">'+fmt(p.precio)+"</td>";
+      html+='<td>'+(p.agotado?'<span class="badge br">Agotado</span>':'<span class="badge bg">Disponible</span>')+"</td>";
+      html+='<td><div style="display:flex;gap:5px">';
+      html+='<button class="btn btn-warn btn-sm" onclick="abrirModalProdCarta('+p.id+')">✏️</button>';
+      html+='<button class="btn '+(p.agotado?"btn-success":"btn-danger")+' btn-sm" onclick="toggleAgotado('+p.id+','+(p.agotado?"false":"true")+')">'+(p.agotado?"✅":"🚫")+"</button>";
+      html+='<button class="btn btn-danger btn-sm" onclick="eliminarProdCarta('+p.id+')">✕</button>';
+      html+="</div></td></tr>";
+    });
+    html+="</tbody></table></div></div>";
+  });
+  if(combos.length){
+    html+='<div class="card"><div class="card-title">⭐ Combos</div><div class="wrap"><table><thead><tr><th>Emoji</th><th>Nombre</th><th>Descripción</th><th>Precio</th><th>Acciones</th></tr></thead><tbody>';
+    combos.forEach(function(c){
+      html+="<tr><td style='font-size:20px'>"+(c.emoji||"⭐")+"</td><td><b>"+c.nombre+"</b></td>";
+      html+="<td style='font-size:12px;color:var(--text3)'>"+( c.descripcion||"")+"</td>";
+      html+='<td style="color:var(--warn-dark);font-weight:800">'+fmt(c.precio)+"</td>";
+      html+='<td><div style="display:flex;gap:5px">';
+      html+='<button class="btn btn-warn btn-sm" onclick="abrirModalCombo('+c.id+')">✏️</button>';
+      html+='<button class="btn btn-danger btn-sm" onclick="eliminarCombo('+c.id+')">✕</button>';
+      html+="</div></td></tr>";
+    });
+    html+="</tbody></table></div></div>";
+  }
+  document.getElementById("tab5").innerHTML=html;
+}
+
+async function toggleAgotado(id,agotado){
+  var prod=carta.filter(function(p){return p.id===id;})[0];
+  if(!prod)return;
+  await api("/carta/"+id,"PUT",{nombre:prod.nombre,categoria:prod.categoria,precio:prod.precio,emoji:prod.emoji,agotado:agotado===true||agotado==="true"});
+  renderCarta();
+}
+
+function abrirModalProdCarta(id){
+  editandoProdCartaIdx=id;
+  var p=id?carta.filter(function(c){return c.id===id;})[0]:null;
+  document.getElementById("modalProdCartaTitulo").textContent=id?"✏️ Editar":"➕ Agregar";
+  document.getElementById("cpNombre").value=p?p.nombre:"";
+  document.getElementById("cpCategoria").value=p?p.categoria:"🍺 Cervezas";
+  document.getElementById("cpPrecio").value=p?p.precio:"";
+  document.getElementById("cpEmoji").value=p?p.emoji:"";
+  document.getElementById("modalProdCarta").style.display="flex";
+}
+async function guardarProdCarta(){
+  var nombre=document.getElementById("cpNombre").value.trim();
+  var categoria=document.getElementById("cpCategoria").value;
+  var precio=Number(document.getElementById("cpPrecio").value)||0;
+  var emoji=document.getElementById("cpEmoji").value.trim()||"🍹";
+  if(!nombre||!precio){alert("Completa nombre y precio");return;}
+  if(editandoProdCartaIdx){await api("/carta/"+editandoProdCartaIdx,"PUT",{nombre:nombre,categoria:categoria,precio:precio,emoji:emoji});}
+  else{await api("/carta","POST",{nombre:nombre,categoria:categoria,precio:precio,emoji:emoji});}
+  cerrarModal("modalProdCarta");renderCarta();
+}
+async function eliminarProdCarta(id){
+  if(!confirm("¿Eliminar?"))return;
+  await api("/carta/"+id,"DELETE");renderCarta();
+}
+
+function abrirModalCombo(id){
+  editandoComboIdx=id;
+  var c=id?combos.filter(function(x){return x.id===id;})[0]:null;
+  document.getElementById("modalComboTitulo").textContent=id?"✏️ Editar combo":"➕ Crear combo";
+  document.getElementById("comboNombre").value=c?c.nombre:"";
+  document.getElementById("comboDesc").value=c?c.descripcion||"":"";
+  document.getElementById("comboPrecio").value=c?c.precio:"";
+  document.getElementById("comboEmoji").value=c?c.emoji||"":"";
+  document.getElementById("modalCombo").style.display="flex";
+}
+async function guardarCombo(){
+  var nombre=document.getElementById("comboNombre").value.trim();
+  var desc=document.getElementById("comboDesc").value.trim();
+  var precio=Number(document.getElementById("comboPrecio").value)||0;
+  var emoji=document.getElementById("comboEmoji").value.trim()||"⭐";
+  if(!nombre||!precio){alert("Completa nombre y precio");return;}
+  if(editandoComboIdx){await api("/combos/"+editandoComboIdx,"PUT",{nombre:nombre,descripcion:desc,precio:precio,emoji:emoji,items:[]});}
+  else{await api("/combos","POST",{nombre:nombre,descripcion:desc,precio:precio,emoji:emoji,items:[]});}
+  cerrarModal("modalCombo");renderCarta();
+}
+async function eliminarCombo(id){
+  if(!confirm("¿Eliminar combo?"))return;
+  await api("/combos/"+id,"DELETE");renderCarta();
+}
+
+// ===== TURNOS =====
+async function renderTurnos(){
+  var turnos=await api("/turnos");
+  var ta=await api("/turnos?activo=1");
+  turnoActivo=ta&&ta.length?ta[0]:null;
+  actualizarTurnoBadge();
+  var html='<div class="card"><div class="card-title">🕐 Turno actual ';
+  if(!turnoActivo){
+    html+='</div><div style="text-align:center;padding:20px"><p style="color:var(--text3);margin-bottom:12px">No hay turno abierto</p>';
+    html+='<button class="btn btn-success" onclick="abrirModalTurno()">▶️ Abrir turno</button></div>';
+  }else{
+    html+='</div>';
+    html+='<div class="kpi-grid">';
+    html+='<div class="kpi-box"><small>📛 Nombre</small><b>'+turnoActivo.nombre+"</b></div>";
+    html+='<div class="kpi-box"><small>💵 Caja inicial</small><b>'+fmt(turnoActivo.caja_inicial||0)+"</b></div>";
+    html+='<div class="kpi-box"><small>🕐 Abierto</small><b>'+( turnoActivo.abierto_en||"")+"</b></div>";
+    html+='<div class="kpi-box"><small>👤 Cajero</small><b>'+(turnoActivo.cajero||"")+"</b></div></div>";
+    html+='<button class="btn btn-danger btn-full" onclick="cerrarTurno()">⏹️ Cerrar turno</button>';
+  }
+  html+="</div>";
+  if(turnos.length){
+    html+='<div class="card"><div class="card-title">Historial de turnos</div><div class="wrap"><table><thead><tr><th>Fecha</th><th>Nombre</th><th>Cajero</th><th>Abierto</th><th>Cerrado</th><th>Caja inicial</th><th>Estado</th></tr></thead><tbody>';
+    turnos.forEach(function(t){
+      html+="<tr><td>"+t.fecha+"</td><td><b>"+t.nombre+"</b></td><td>"+(t.cajero||"")+"</td>";
+      html+="<td>"+(t.abierto_en||"")+"</td><td>"+(t.cerrado_en||"—")+"</td>";
+      html+="<td>"+fmt(t.caja_inicial||0)+"</td>";
+      html+='<td><span class="badge '+(t.estado==="abierto"?"bg":"br")+'">'+(t.estado==="abierto"?"Abierto":"Cerrado")+"</span></td></tr>";
+    });
+    html+="</tbody></table></div></div>";
+  }
+  document.getElementById("tab6").innerHTML=html;
+}
+function abrirModalTurno(){
+  document.getElementById("turnoNombre").value="Turno "+new Date().toLocaleDateString("es-CO",{weekday:"long"});
+  document.getElementById("turnoCajaInicial").value="";
+  document.getElementById("modalTurno").style.display="flex";
+}
+async function confirmarAbrirTurno(){
+  var nombre=document.getElementById("turnoNombre").value.trim()||"Turno";
+  var cajaInicial=Number(document.getElementById("turnoCajaInicial").value)||0;
+  var r=await api("/turnos","POST",{fecha:hoy(),nombre:nombre,cajero:usuarioActual.nombre,cajero_email:usuarioActual.email,caja_inicial:cajaInicial,abierto_en:hora()});
+  turnoActivo=r;actualizarTurnoBadge();
+  cerrarModal("modalTurno");renderTurnos();
+}
+async function cerrarTurno(){
+  if(!turnoActivo){return;}
+  if(!confirm("¿Cerrar el turno "+turnoActivo.nombre+"?"))return;
+  await api("/turnos/"+turnoActivo.id,"PUT",{estado:"cerrado",cerrado_en:hora(),caja_final:0});
+  turnoActivo=null;actualizarTurnoBadge();renderTurnos();
+}
+
+// ===== GASTOS =====
+async function renderGastos(){
+  var gastos=await api("/gastos?fecha="+hoy());
+  var tg=gastos.reduce(function(s,g){return s+Number(g.monto||0);},0);
+  var html='<div class="card"><div class="card-title">💸 Gastos de hoy — '+fmt(tg)+' <button class="btn btn-danger btn-sm" onclick="document.getElementById(\'modalGasto\').style.display=\'flex\'">➕ Registrar</button></div>';
+  if(!gastos.length){html+='<p style="text-align:center;color:var(--text3);padding:20px">Sin gastos registrados hoy</p>';}
+  else{
+    html+='<div class="wrap"><table><thead><tr><th>Hora</th><th>Categoría</th><th>Descripción</th><th>Monto</th><th>Cajero</th><th></th></tr></thead><tbody>';
+    gastos.forEach(function(g){
+      html+="<tr><td style='font-size:11px;color:var(--text3)'>"+(g.hora||"")+"</td>";
+      html+="<td><span class='badge by'>"+g.categoria+"</span></td>";
+      html+="<td>"+g.descripcion+"</td>";
+      html+='<td style="color:var(--danger);font-weight:800">'+fmt(g.monto)+"</td>";
+      html+="<td style='font-size:11px;color:var(--text3)'>"+(g.cajero||"")+"</td>";
+      html+='<td><button class="btn btn-danger btn-sm" onclick="eliminarGasto('+g.id+')">✕</button></td></tr>';
+    });
+    html+="</tbody></table></div>";
+  }
+  html+='<div style="display:flex;justify-content:flex-end;padding-top:8px;font-size:14px;font-weight:700;color:var(--danger)">Total gastos: '+fmt(tg)+"</div></div>";
+  document.getElementById("tab7").innerHTML=html;
+}
+async function guardarGasto(){
+  var cat=document.getElementById("gastoCategoria").value;
+  var desc=document.getElementById("gastoDesc").value.trim();
+  var monto=Number(document.getElementById("gastoMonto").value)||0;
+  if(!desc||!monto){alert("Completa descripción y monto");return;}
+  await api("/gastos","POST",{fecha:hoy(),hora:hora(),categoria:cat,descripcion:desc,monto:monto,cajero:usuarioActual.nombre,turno_id:turnoActivo?turnoActivo.id:null});
+  cerrarModal("modalGasto");renderGastos();
+}
+async function eliminarGasto(id){
+  if(!confirm("¿Eliminar gasto?"))return;
+  await api("/gastos/"+id,"DELETE");renderGastos();
+}
+
+// ===== FIADOS =====
+async function renderFiados(){
+  var fiados=await api("/fiados?estado=pendiente");
+  var total=fiados.reduce(function(s,f){return s+Number(f.monto||0);},0);
+  var html='<div class="card"><div class="card-title">🤝 Fiados pendientes — '+fmt(total)+' <button class="btn btn-warn btn-sm" onclick="document.getElementById(\'modalFiado\').style.display=\'flex\'">➕ Registrar</button></div>';
+  if(!fiados.length){html+='<p style="text-align:center;color:var(--text3);padding:20px">Sin fiados pendientes</p>';}
+  else{
+    html+='<div class="wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Monto</th><th>Descripción</th><th>Cajero</th><th>Acciones</th></tr></thead><tbody>';
+    fiados.forEach(function(f){
+      html+="<tr><td style='font-size:11px'>"+f.fecha+"</td>";
+      html+="<td><b>"+f.cliente+"</b></td>";
+      html+='<td style="color:var(--warn-dark);font-weight:800">'+fmt(f.monto)+"</td>";
+      html+="<td style='font-size:12px;color:var(--text3)'>"+(f.descripcion||"")+"</td>";
+      html+="<td style='font-size:11px;color:var(--text3)'>"+(f.cajero||"")+"</td>";
+      html+='<td><button class="btn btn-success btn-sm" onclick="pagarFiado('+f.id+')">✅ Pagar</button></td></tr>';
+    });
+    html+="</tbody></table></div>";
+  }
+  html+="</div>";
+  document.getElementById("tab8").innerHTML=html;
+}
+async function guardarFiado(){
+  var cliente=document.getElementById("fiadoCliente").value.trim();
+  var monto=Number(document.getElementById("fiadoMonto").value)||0;
+  var desc=document.getElementById("fiadoDesc").value.trim();
+  if(!cliente||!monto){alert("Completa cliente y monto");return;}
+  await api("/fiados","POST",{fecha:hoy(),hora:hora(),cliente:cliente,monto:monto,descripcion:desc,cajero:usuarioActual.nombre});
+  cerrarModal("modalFiado");renderFiados();
+}
+async function pagarFiado(id){
+  if(!confirm("¿Marcar como pagado?"))return;
+  await api("/fiados/"+id,"PUT",{estado:"pagado",fecha_pago:hoy()});renderFiados();
+}
+
+// ===== RESERVAS =====
+async function renderReservas(){
+  var reservas=await api("/reservas?fecha="+hoy());
+  var html='<div class="card"><div class="card-title">📅 Reservas de hoy <button class="btn btn-primary btn-sm" onclick="document.getElementById(\'modalReserva\').style.display=\'flex\'">➕ Nueva reserva</button></div>';
+  if(!reservas.length){html+='<p style="text-align:center;color:var(--text3);padding:20px">Sin reservas para hoy</p>';}
+  else{
+    html+='<div class="wrap"><table><thead><tr><th>Hora</th><th>Cliente</th><th>Personas</th><th>Mesa</th><th>Notas</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>';
+    reservas.forEach(function(r){
+      html+="<tr><td><b>"+(r.hora||"")+"</b></td>";
+      html+="<td><b>"+r.nombre+"</b>"+(r.telefono?" <span style='font-size:11px;color:var(--text3)'>"+r.telefono+"</span>":"")+"</td>";
+      html+="<td>"+r.personas+"</td>";
+      html+="<td>"+(r.mesa?"Mesa "+r.mesa:"—")+"</td>";
+      html+="<td style='font-size:12px;color:var(--text3)'>"+(r.notas||"")+"</td>";
+      var sc=r.estado==="confirmada"?"bg":r.estado==="cancelada"?"br":"by";
+      html+='<td><span class="badge '+sc+'">'+r.estado+"</span></td>";
+      html+='<td><div style="display:flex;gap:4px">';
+      if(r.estado==="pendiente")html+='<button class="btn btn-success btn-sm" onclick="confirmarReserva('+r.id+')">✅</button>';
+      html+='<button class="btn btn-danger btn-sm" onclick="cancelarReserva('+r.id+')">✕</button>';
+      html+="</div></td></tr>";
+    });
+    html+="</tbody></table></div>";
+  }
+  html+="</div>";
+  document.getElementById("tab9").innerHTML=html;
+}
+async function guardarReserva(){
+  var nombre=document.getElementById("resNombre").value.trim();
+  var tel=document.getElementById("resTelefono").value.trim();
+  var fecha=document.getElementById("resFecha").value;
+  var h=document.getElementById("resHora").value;
+  var personas=Number(document.getElementById("resPersonas").value)||1;
+  var notas=document.getElementById("resNotas").value.trim();
+  if(!nombre||!fecha){alert("Completa nombre y fecha");return;}
+  await api("/reservas","POST",{fecha:fecha,hora:h,nombre:nombre,telefono:tel,personas:personas,notas:notas});
+  cerrarModal("modalReserva");renderReservas();
+}
+async function confirmarReserva(id){await api("/reservas/"+id,"PUT",{estado:"confirmada"});renderReservas();}
+async function cancelarReserva(id){if(!confirm("¿Cancelar reserva?"))return;await api("/reservas/"+id,"PUT",{estado:"cancelada"});renderReservas();}
+
+// ===== EVENTOS =====
+async function renderEventos(){
+  var eventos=await api("/eventos");
+  var html='<div class="card"><div class="card-title">🎉 Eventos <button class="btn btn-primary btn-sm" onclick="document.getElementById(\'modalEvento\').style.display=\'flex\'">➕ Nuevo evento</button></div>';
+  if(!eventos.length){html+='<p style="text-align:center;color:var(--text3);padding:20px">Sin eventos registrados</p>';}
+  else{
+    html+='<div class="wrap"><table><thead><tr><th>Fecha</th><th>Evento</th><th>Cover</th><th>Descripción</th><th>Estado</th><th></th></tr></thead><tbody>';
+    eventos.forEach(function(e){
+      html+="<tr><td><b>"+e.fecha+"</b></td>";
+      html+="<td><b>"+e.nombre+"</b></td>";
+      html+="<td>"+(e.cover?fmt(e.cover):"Gratis")+"</td>";
+      html+="<td style='font-size:12px;color:var(--text3)'>"+(e.descripcion||"")+"</td>";
+      html+='<td><span class="badge '+(e.activo?"bg":"br")+'">'+(e.activo?"Activo":"Inactivo")+"</span></td>";
+      html+='<td><button class="btn btn-danger btn-sm" onclick="eliminarEvento('+e.id+')">✕</button></td></tr>';
+    });
+    html+="</tbody></table></div>";
+  }
+  html+="</div>";
+  document.getElementById("tab10").innerHTML=html;
+}
+async function guardarEvento(){
+  var nombre=document.getElementById("evNombre").value.trim();
+  var fecha=document.getElementById("evFecha").value;
+  var cover=Number(document.getElementById("evCover").value)||0;
+  var desc=document.getElementById("evDesc").value.trim();
+  if(!nombre||!fecha){alert("Completa nombre y fecha");return;}
+  await api("/eventos","POST",{fecha:fecha,nombre:nombre,descripcion:desc,cover:cover});
+  cerrarModal("modalEvento");renderEventos();
+}
+async function eliminarEvento(id){
+  if(!confirm("¿Eliminar evento?"))return;
+  await api("/eventos/"+id,"DELETE");renderEventos();
+}
+
+// ===== LOG =====
+async function renderLog(){
+  var logs=await api("/log?fecha="+hoy());
+  var html='<div class="card"><div class="card-title">📋 Log de actividad — '+hoy()+"</div>";
+  if(!logs.length){html+='<p style="text-align:center;color:var(--text3);padding:20px">Sin actividad registrada hoy</p>';}
+  else{
+    html+='<div class="wrap"><table><thead><tr><th>Hora</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr></thead><tbody>';
+    logs.forEach(function(l){
+      html+="<tr><td style='font-size:11px;color:var(--text3)'>"+(l.hora||"")+"</td>";
+      html+='<td><span class="badge bp">'+(l.usuario||"")+"</span></td>";
+      html+="<td><b>"+l.accion+"</b></td>";
+      html+="<td style='font-size:12px;color:var(--text3)'>"+(l.detalle||"")+"</td></tr>";
+    });
+    html+="</tbody></table></div>";
+  }
+  html+="</div>";
+  document.getElementById("tab11").innerHTML=html;
+}
+
+// ===== USUARIOS =====
+async function renderUsuarios(){
+  var usrs=await api("/usuarios");
+  usuarios={};usrs.forEach(function(u){usuarios[u.email]={nombre:u.nombre,rol:u.rol,foto:u.foto};});
+  var html='<div class="card"><div class="card-title">👥 Usuarios ('+usrs.length+') <button class="btn btn-primary btn-sm" onclick="abrirModalUsuario(null)">➕ Agregar</button></div>';
+  html+="<div class='wrap'><table><thead><tr><th>Usuario</th><th>Correo</th><th>Rol</th><th>Acciones</th></tr></thead><tbody>";
+  usrs.forEach(function(u){
+    html+="<tr><td><div style='display:flex;align-items:center;gap:8px'>";
+    html+=u.foto?'<img src="'+u.foto+'" style="width:28px;height:28px;border-radius:50%"/>':'👤';
+    html+="<b>"+u.nombre+"</b>"+(u.email===usuarioActual.email?' <span style="font-size:10px;color:var(--primary)">(tú)</span>':"")+"</div></td>";
+    html+='<td style="color:var(--text3);font-size:12px">'+u.email+"</td>";
+    html+='<td><span class="badge '+(ROL_COLOR[u.rol]||"bp")+'">'+(ROL_LABEL[u.rol]||u.rol)+"</span></td>";
+    html+='<td><div style="display:flex;gap:6px">';
+    html+='<button class="btn btn-warn btn-sm" onclick="abrirModalUsuario(\''+u.email+'\')">✏️</button>';
+    if(u.email!==usuarioActual.email)html+='<button class="btn btn-danger btn-sm" onclick="eliminarUsuario(\''+u.email+'\')">✕</button>';
+    html+="</div></td></tr>";
+  });
+  html+="</tbody></table></div></div>";
+  document.getElementById("tab12").innerHTML=html;
+}
+function abrirModalUsuario(email){
+  editandoEmail=email;
+  document.getElementById("modalUsuTitulo").textContent=email?"✏️ Editar":"➕ Agregar";
+  document.getElementById("mEmail").value=email||"";document.getElementById("mEmail").disabled=!!email;
+  document.getElementById("mNombre").value=email&&usuarios[email]?usuarios[email].nombre||"":"";
+  document.getElementById("mRol").value=email&&usuarios[email]?usuarios[email].rol||"mesero":"mesero";
+  actualizarDescRol();document.getElementById("modalUsuario").style.display="flex";
+}
+document.getElementById("mRol").addEventListener("change",actualizarDescRol);
+function actualizarDescRol(){document.getElementById("mRolDesc").textContent=ROL_DESC[document.getElementById("mRol").value]||"";}
+async function guardarUsuario(){
+  var email=document.getElementById("mEmail").value.trim().toLowerCase();
+  var nombre=document.getElementById("mNombre").value.trim();
+  var rol=document.getElementById("mRol").value;
+  if(!email||!nombre){alert("Completa todos los campos");return;}
+  if(!email.includes("@")){alert("Correo inválido");return;}
+  await api("/usuarios","POST",{email:email,nombre:nombre,rol:rol,foto:usuarios[email]?usuarios[email].foto||"":""});
+  cerrarModal("modalUsuario");renderUsuarios();
+}
+async function eliminarUsuario(email){
+  if(!confirm("¿Eliminar a "+(usuarios[email]?usuarios[email].nombre:email)+"?"))return;
+  await api("/usuarios/"+email,"DELETE");renderUsuarios();
+}
+
+initAuth0();
+</script>
+</body>
+</html>
