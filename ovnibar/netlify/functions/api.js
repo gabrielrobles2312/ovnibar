@@ -43,7 +43,15 @@ async function initDB(sql) {
       fecha TEXT NOT NULL, abierto_en TEXT, cerrado_en TEXT, estado TEXT DEFAULT 'abierto',
       created_at TIMESTAMPTZ DEFAULT NOW()
     )`;
-    // ── NUEVA TABLA: mesas ──────────────────────────────
+    // ── TABLA MESAS: recrear limpia si le faltan columnas ──
+    const mesasCols = await sql`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name='mesas'`;
+    const colNames = mesasCols.map(r => r.column_name);
+    if (!colNames.includes('nombre')) {
+      // Tabla vieja o vacía sin estructura correcta: drop y recrear
+      await sql`DROP TABLE IF EXISTS mesas`;
+    }
     await sql`CREATE TABLE IF NOT EXISTS mesas (
       id SERIAL PRIMARY KEY,
       nombre TEXT NOT NULL,
@@ -55,13 +63,6 @@ async function initDB(sql) {
       cajero_email TEXT DEFAULT NULL,
       created_at TIMESTAMPTZ DEFAULT NOW()
     )`;
-
-    // Migraciones tabla mesas (columnas nuevas)
-    await sql`ALTER TABLE mesas ADD COLUMN IF NOT EXISTS zona TEXT DEFAULT 'Salón'`;
-    await sql`ALTER TABLE mesas ADD COLUMN IF NOT EXISTS capacidad INT DEFAULT 4`;
-    await sql`ALTER TABLE mesas ADD COLUMN IF NOT EXISTS items JSONB DEFAULT '[]'`;
-    await sql`ALTER TABLE mesas ADD COLUMN IF NOT EXISTS cajero_nombre TEXT DEFAULT NULL`;
-    await sql`ALTER TABLE mesas ADD COLUMN IF NOT EXISTS cajero_email TEXT DEFAULT NULL`;
 
     // Migraciones seguras (idempotentes)
     await sql`ALTER TABLE productos ADD COLUMN IF NOT EXISTS inv_item_id INT DEFAULT NULL`;
