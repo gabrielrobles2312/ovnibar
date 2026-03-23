@@ -818,9 +818,15 @@ function parseCuentasMesa(mesa){
   var raw=[];
   try{ raw=Array.isArray(mesa.items)?mesa.items:JSON.parse(mesa.items||"[]"); }catch(e){ raw=[]; }
   if(!raw.length) return [];
-  if(raw[0]&&raw[0].id!==undefined&&raw[0].nombre!==undefined) return raw; // formato nuevo
-  // formato viejo (items planos) → 1 cuenta
-  return [{id:uid(),nombre:mesa.cajero_nombre||"Cuenta",items:raw}];
+  // Detectar formato nuevo: cada elemento tiene {id, nombre, items:[]}
+  var esNuevo=raw[0]&&raw[0].nombre!==undefined&&Array.isArray(raw[0].items);
+  if(esNuevo) return raw;
+  // Formato viejo (array plano de productos) → envolver en 1 cuenta
+  return [{id:uid(),nombre:mesa.cajero_nombre||"Cuenta",items:raw.map(i=>({
+    id:i.id||0,nombre:i.nombre||i.nom||"",emoji:i.emoji||"🍹",
+    precio:Number(i.precio)||0,cant:Number(i.cant)||1,
+    inv_item_id:i.inv_item_id||null,inv_descuento:Number(i.inv_descuento)||0,nom:i.nom||i.nombre||""
+  }))}];
 }
 
 // ════════════════════════════════════════════════════
