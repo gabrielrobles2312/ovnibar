@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
 <title>OvniBar — Gestión</title>
 <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{--bg:#f0f2f5;--sur:#fff;--sur2:#f8f9fa;--brd:#e0e0e0;--txt:#1a1a2e;--txt2:#666;--txt3:#999;
   --pri:#6c5ce7;--prl:#6c5ce722;--ok:#00b894;--okl:#00b89422;--ng:#ff7675;--ngl:#ff767522;
@@ -1013,94 +1012,86 @@ function generarFacturaPDF(){
   var mesaNom=window._cobrandoMesaId?(mesas.find(x=>x.id===window._cobrandoMesaId)||{}).nombre||"Mostrador":"Mostrador";
   generarPDF({items,total,mesa:mesaNom,desc,ivaPct,ivaMonto,metodo,estado:"PAGADO"});
 }
-function generarPDF({items,total,mesa,desc,ivaPct,ivaMonto,metodo,estado}){
-  try{
-    var {jsPDF}=window.jspdf;
-    var doc=new jsPDF({unit:"mm",format:[80,220],orientation:"portrait"});
-    var x=5,y=8,w=70;
+function generarPDF({items,total,mesa,desc,ivaPct,ivaMonto,metodo,estado,numero}){
+  var num=numero||facturaNum;
+  var base2=items.reduce((s,i)=>s+i.precio*i.cant,0);
 
-    // Cabecera
-    doc.setFontSize(15); doc.setFont("helvetica","bold");
-    doc.text(BAR_CFG.nombre,40,y,{align:"center"}); y+=6;
-    doc.setFontSize(7.5); doc.setFont("helvetica","normal");
-    if(BAR_CFG.nit){ doc.text(BAR_CFG.nit,40,y,{align:"center"}); y+=4; }
-    if(BAR_CFG.dir){ doc.text(BAR_CFG.dir,40,y,{align:"center"}); y+=4; }
-    if(BAR_CFG.tel){ doc.text(BAR_CFG.tel,40,y,{align:"center"}); y+=4; }
-    y+=1;
+  var filas=items.map(item=>`
+    <tr>
+      <td>${item.nombre||item.nom||""}</td>
+      <td style="text-align:center">${item.cant}</td>
+      <td style="text-align:right">${fmt(item.precio)}</td>
+      <td style="text-align:right"><b>${fmt(item.precio*item.cant)}</b></td>
+    </tr>`).join("");
 
-    // Línea
-    doc.setLineDash([1,1]); doc.line(x,y,x+w,y); y+=4; doc.setLineDash([]);
+  var totalesHTML="";
+  if(desc>0) totalesHTML+=`<tr><td colspan="3">Descuento ${desc}%</td><td style="text-align:right">−${fmt(Math.round(base2*desc/100))}</td></tr>`;
+  if(ivaPct>0) totalesHTML+=`<tr><td colspan="3">IVA ${ivaPct}%</td><td style="text-align:right">${fmt(ivaMonto)}</td></tr>`;
+  if(metodo&&metodo!=="—") totalesHTML+=`<tr><td colspan="3" style="color:#666">Método de pago</td><td style="text-align:right;color:#666">${metodo}</td></tr>`;
 
-    // Info factura
-    doc.setFont("helvetica","bold"); doc.setFontSize(9);
-    doc.text("FACTURA #"+pad(facturaNum),40,y,{align:"center"}); y+=5;
-    doc.setFont("helvetica","normal"); doc.setFontSize(7.5);
-    doc.text("Fecha: "+fmtF(hoy())+"   Hora: "+hora(),40,y,{align:"center"}); y+=4;
-    doc.text("Mesa: "+mesa,40,y,{align:"center"}); y+=4;
-    doc.text("Atendido por: "+usuarioActual.nombre,40,y,{align:"center"}); y+=4;
-    doc.text("Estado: "+estado,40,y,{align:"center"}); y+=5;
-
-    // Línea
-    doc.setLineDash([1,1]); doc.line(x,y,x+w,y); y+=4; doc.setLineDash([]);
-
-    // Encabezado columnas
-    doc.setFont("helvetica","bold"); doc.setFontSize(7.5);
-    doc.text("Producto",x,y);
-    doc.text("Cant",x+39,y,{align:"center"});
-    doc.text("P.Unit",x+53,y,{align:"center"});
-    doc.text("Total",x+w,y,{align:"right"});
-    y+=3;
-    doc.setLineDash([0.5,0.5]); doc.line(x,y,x+w,y); y+=4; doc.setLineDash([]);
-
-    // Items
-    doc.setFont("helvetica","normal");
-    items.forEach(item=>{
-      var nom=item.nombre||item.nom||"";
-      if(nom.length>21) nom=nom.substring(0,19)+"..";
-      doc.text(nom,x,y);
-      doc.text(String(item.cant),x+39,y,{align:"center"});
-      doc.text(fmt(item.precio),x+53,y,{align:"center"});
-      doc.text(fmt(item.precio*item.cant),x+w,y,{align:"right"});
-      y+=5;
-    });
-
-    y+=1; doc.setLineDash([1,1]); doc.line(x,y,x+w,y); y+=4; doc.setLineDash([]);
-
-    // Totales
-    var base2=items.reduce((s,i)=>s+i.precio*i.cant,0);
-    doc.setFontSize(7.5); doc.setFont("helvetica","normal");
-    if(desc>0){
-      doc.text("Subtotal:",x,y); doc.text(fmt(base2),x+w,y,{align:"right"}); y+=4;
-      doc.text("Descuento "+desc+"%:",x,y); doc.text("−"+fmt(Math.round(base2*desc/100)),x+w,y,{align:"right"}); y+=4;
+  var html=`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+  <title>Factura #${pad(num)}</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Courier New',monospace;font-size:12px;width:80mm;margin:0 auto;padding:8px}
+    .center{text-align:center}
+    .nombre{font-size:18px;font-weight:900;margin-bottom:2px}
+    .info{font-size:11px;color:#444;margin-bottom:2px}
+    .sep{border:none;border-top:1px dashed #999;margin:8px 0}
+    .num{font-size:13px;font-weight:700;margin:4px 0}
+    table{width:100%;border-collapse:collapse;font-size:11px;margin:6px 0}
+    th{border-bottom:1px solid #ccc;padding:3px 2px;font-size:11px}
+    td{padding:3px 2px;vertical-align:top}
+    .total-row td{border-top:1px dashed #999;padding-top:5px;font-size:13px;font-weight:900}
+    .firma{text-align:center;font-size:11px;color:#555;margin-top:10px;font-style:italic}
+    .estado{display:inline-block;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700;
+      background:${estado==="PAGADO"?"#d4edda":"#fff3cd"};color:${estado==="PAGADO"?"#155724":"#856404"}}
+    @media print{
+      body{margin:0;padding:4px}
+      button{display:none!important}
     }
-    if(ivaPct>0){
-      doc.text("IVA "+ivaPct+"%:",x,y); doc.text(fmt(ivaMonto),x+w,y,{align:"right"}); y+=4;
-    }
-    if(metodo&&metodo!=="—"){
-      doc.text("Método de pago:",x,y); doc.text(metodo,x+w,y,{align:"right"}); y+=5;
-    }
+  </style></head><body>
+  <div class="center">
+    <div class="nombre">${BAR_CFG.nombre}</div>
+    ${BAR_CFG.nit?`<div class="info">${BAR_CFG.nit}</div>`:""}
+    ${BAR_CFG.dir?`<div class="info">${BAR_CFG.dir}</div>`:""}
+    ${BAR_CFG.tel?`<div class="info">${BAR_CFG.tel}</div>`:""}
+  </div>
+  <hr class="sep"/>
+  <div class="center">
+    <div class="num">FACTURA #${pad(num)}</div>
+    <div class="info">Fecha: ${fmtF(hoy())} &nbsp; Hora: ${hora()}</div>
+    <div class="info">Mesa: <b>${mesa}</b> &nbsp;|&nbsp; Cajero: ${usuarioActual.nombre}</div>
+    <div style="margin-top:5px"><span class="estado">${estado}</span></div>
+  </div>
+  <hr class="sep"/>
+  <table>
+    <thead><tr><th style="text-align:left">Producto</th><th>Cant</th><th style="text-align:right">P.Unit</th><th style="text-align:right">Total</th></tr></thead>
+    <tbody>${filas}</tbody>
+  </table>
+  <hr class="sep"/>
+  <table>
+    <tbody>
+      ${totalesHTML}
+      <tr class="total-row"><td colspan="3">TOTAL</td><td style="text-align:right">${fmt(total)}</td></tr>
+    </tbody>
+  </table>
+  ${BAR_CFG.firma?`<div class="firma">${BAR_CFG.firma}</div>`:`<div class="firma">¡Gracias por su visita!</div>`}
+  <div style="text-align:center;margin-top:12px">
+    <button onclick="window.print()" style="padding:8px 20px;font-size:13px;cursor:pointer;background:#6c5ce7;color:#fff;border:none;border-radius:8px">🖨️ Imprimir</button>
+  </div>
+  <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`;
 
-    // Total grande
-    doc.setFont("helvetica","bold"); doc.setFontSize(12);
-    doc.text("TOTAL:",x,y); doc.text(fmt(total),x+w,y,{align:"right"}); y+=10;
+  var win=window.open("","_blank","width=400,height=600,scrollbars=yes");
+  if(!win){ alert("Permite las ventanas emergentes para imprimir"); return; }
+  win.document.write(html);
+  win.document.close();
 
-    // Firma / pie personalizable
-    doc.setLineDash([1,1]); doc.line(x,y,x+w,y); y+=5; doc.setLineDash([]);
-    doc.setFont("helvetica","italic"); doc.setFontSize(7.5);
-    if(BAR_CFG.firma){
-      var lineas=doc.splitTextToSize(BAR_CFG.firma,w);
-      lineas.forEach(l=>{ doc.text(l,40,y,{align:"center"}); y+=4; });
-    } else {
-      doc.text("¡Gracias por su visita!",40,y,{align:"center"}); y+=4;
-    }
-
-    // Ajustar altura
-    doc.internal.pageSize.height=y+6;
-    doc.save("factura_"+pad(facturaNum)+"_"+mesa.replace(/\s/g,"_")+".pdf");
-
+  if(!numero){
     facturaNum++;
     localStorage.setItem("facturaNum",facturaNum);
-  }catch(e){ alert("Error PDF: "+e.message); }
+  }
 }
 
 // ══════════════════════════════════════════════════════
@@ -1133,6 +1124,13 @@ async function renderCaja(){
   html+='<div class="wrap"><table><thead><tr><th>Hora</th><th>Mesa</th><th>Descripción</th><th>Total</th><th>IVA</th><th>Pago</th><th>Comp.</th><th></th></tr></thead><tbody>';
   if(!vs.length) html+='<tr><td colspan="8" style="text-align:center;color:var(--txt3);padding:20px">Sin ventas hoy</td></tr>';
   vs.slice().reverse().forEach(v=>{
+    // reconstruir items para reimprimir
+    var vItems=Array.isArray(v.items)?v.items:JSON.parse(v.items||"[]");
+    var vData=JSON.stringify({
+      items:vItems, total:v.total, mesa:v.mesa_nom||"Mostrador",
+      desc:v.desc_pct||0, ivaPct:v.iva_pct||0, ivaMonto:v.iva_monto||0,
+      metodo:v.metodo||"—", estado:"PAGADO", numero:v.id
+    }).replace(/'/g,"&#39;");
     html+=`<tr>
       <td style="font-size:10px;color:var(--txt3)">${v.hora||""}</td>
       <td style="font-size:11px">${v.mesa_nom||"—"}</td>
@@ -1141,7 +1139,10 @@ async function renderCaja(){
       <td style="font-size:11px;color:var(--txt3)">${v.iva_pct>0?v.iva_pct+"%":"—"}</td>
       <td><span class="bdg bg">${v.metodo}</span></td>
       <td>${v.comprobante?`<img src="${v.comprobante}" style="width:30px;height:30px;border-radius:6px;object-fit:cover;cursor:pointer" onclick="window.open('${v.comprobante}','_blank')"/>`:"—"}</td>
-      <td><button class="btn btn-ng btn-sm" onclick="eliminarVenta(${v.id})">✕</button></td></tr>`;
+      <td><div style="display:flex;gap:4px">
+        <button class="btn btn-wn btn-sm" title="Ver factura" onclick='reimprimirVenta(${v.id})'>🧾</button>
+        <button class="btn btn-ng btn-sm" onclick="eliminarVenta(${v.id})">✕</button>
+      </div></td></tr>`;
   });
   if(vs.length) html+=`<tr class="tfoot"><td colspan="3">TOTAL HOY</td><td>${fmt(tv)}</td><td colspan="4"></td></tr>`;
   html+="</tbody></table></div></div>";
@@ -1618,6 +1619,28 @@ async function guardarUsuario(){
 async function eliminarUsuario(email){
   if(!confirm("¿Eliminar usuario?")) return;
   await api("/usuarios/"+encodeURIComponent(email),"DELETE"); renderUsuarios();
+}
+
+// Reimprimir factura desde caja
+async function reimprimirVenta(id){
+  var vs=await api("/ventas?fecha="+hoy());
+  var v=Array.isArray(vs)?vs.find(x=>String(x.id)===String(id)):null;
+  if(!v){ alert("No se encontró la venta"); return; }
+  var items=Array.isArray(v.items)?v.items:JSON.parse(v.items||"[]");
+  // Si no tiene items (venta libre), crear item ficticio
+  if(!items.length && v.descripcion){
+    items=[{nombre:v.descripcion,cant:1,precio:v.total,nom:v.descripcion}];
+  }
+  generarPDF({
+    items, total:Number(v.total),
+    mesa:v.mesa_nom||"Mostrador",
+    desc:Number(v.desc_pct)||0,
+    ivaPct:Number(v.iva_pct)||0,
+    ivaMonto:Number(v.iva_monto)||0,
+    metodo:v.metodo||"—",
+    estado:"PAGADO",
+    numero:v.id   // usa el id como número de factura, no incrementa
+  });
 }
 
 initAuth0();
