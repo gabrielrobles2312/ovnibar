@@ -151,11 +151,25 @@ tr:nth-child(even) td{background:var(--sur2)}
   </div></div>
 </div>
 
+<!-- ══ MODAL: Acción en mesa libre ══ -->
+<div id="mAccionMesa" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <h3 id="mAccionTit">🪑 Mesa 1</h3>
+    <p style="font-size:13px;color:var(--txt2);margin-bottom:16px">¿Qué deseas hacer?</p>
+    <button class="btn btn-ok btn-full" onclick="elegirAbrirCuenta()" style="margin-bottom:10px;font-size:15px">
+      📋 Abrir cuenta a nombre de alguien
+    </button>
+    <button class="btn btn-pri btn-full" onclick="elegirCobroInmediato()" style="font-size:15px">
+      ⚡ Cobro inmediato (sin nombre)
+    </button>
+    <button class="btn btn-gh btn-full" onclick="cerrarModal('mAccionMesa')" style="margin-top:8px">Cancelar</button>
+  </div>
+</div>
+
 <!-- ══ MODAL: Asignar mesa ══ -->
 <div id="mAsignar" class="modal-overlay" style="display:none">
   <div class="modal">
     <h3 id="mAsignarTit">🪑 Abrir mesa</h3>
-    <!-- Tipo -->
     <p style="font-size:12px;font-weight:700;color:var(--txt2);margin-bottom:8px">¿Cómo van a consumir?</p>
     <div class="tipo-grid">
       <div class="tipo-opt sel" id="t-individual" onclick="selTipo('individual')">
@@ -168,22 +182,30 @@ tr:nth-child(even) td{background:var(--sur2)}
         <div class="ti">🗂️</div><b>Múltiples</b><small>Cada quien paga lo suyo</small>
       </div>
     </div>
-    <!-- Nombres -->
-    <div id="asignarNombresWrap">
-      <label>👤 Nombre del cliente o grupo</label>
-      <input id="asignarN1" placeholder="Ej: Juan, Grupo cumpleaños..."/>
-      <div id="asignarExtras" style="display:none">
-        <label>👤 Cliente 2 (opcional)</label>
-        <input id="asignarN2" placeholder="Nombre 2"/>
-        <label>👤 Cliente 3 (opcional)</label>
-        <input id="asignarN3" placeholder="Nombre 3"/>
-        <button class="btn btn-gh btn-sm" style="margin-bottom:12px" onclick="agregarCampoNombre()">➕ Más clientes</button>
-        <div id="asignarNExtras"></div>
-      </div>
+    <label>👤 Nombre del cliente o grupo</label>
+    <input id="asignarN1" placeholder="Ej: Juan, Grupo cumpleaños..."/>
+    <div id="asignarExtras" style="display:none">
+      <label>👤 Cliente 2 (opcional)</label><input id="asignarN2" placeholder="Nombre 2"/>
+      <label>👤 Cliente 3 (opcional)</label><input id="asignarN3" placeholder="Nombre 3"/>
+      <button class="btn btn-gh btn-sm" style="margin-bottom:12px" onclick="agregarCampoNombre()">➕ Más clientes</button>
+      <div id="asignarNExtras"></div>
     </div>
     <div class="btns">
       <button class="btn btn-gh" onclick="cerrarModal('mAsignar')">Cancelar</button>
-      <button class="btn btn-ok" onclick="confirmarAsignar()">▶️ Abrir mesa</button>
+      <button class="btn btn-ok" onclick="confirmarAsignar()">▶️ Abrir cuenta</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Cierre de turno ══ -->
+<div id="mCierre" class="modal-overlay" style="display:none">
+  <div class="modal" style="max-width:600px">
+    <h3>📊 Resumen de cierre — <span id="cierreNomTurno"></span></h3>
+    <div id="cierreContenido"></div>
+    <div class="btns" style="margin-top:12px">
+      <button class="btn btn-gh" onclick="cerrarModal('mCierre')">← Volver</button>
+      <button class="btn btn-wn" onclick="imprimirCierre()">🖨️ Imprimir reporte</button>
+      <button class="btn btn-ng" onclick="confirmarCierreTurno()">⏹️ Confirmar cierre</button>
     </div>
   </div>
 </div>
@@ -850,27 +872,61 @@ function agregarCampoNombre(){
   d.appendChild(el);
 }
 
+// ── Bloqueo sin turno ──────────────────────────────
+function verificarTurno(){
+  if(!turnoActivo){
+    if(confirm("⚠️ No hay turno abierto. Debes abrir un turno antes de vender.\n\n¿Ir a Turno / Cierre ahora?")){
+      goTab("turno");
+    }
+    return false;
+  }
+  return true;
+}
+
 function clickMesa(mesaId){
   if(modoEditar){ abrirMesaForm(mesaId); return; }
   var mesa=mesas.find(x=>x.id===mesaId); if(!mesa) return;
   var cuentas=parseCuentasMesa(mesa);
   if(!cuentas.length){
-    // Mesa libre → asignar
-    tipoCuentaAsignar="individual"; nombresExtras=[];
-    selTipo("individual");
-    document.getElementById("asignarN1").value="";
-    document.getElementById("asignarN2").value="";
-    document.getElementById("asignarN3").value="";
-    document.getElementById("asignarNExtras").innerHTML="";
-    var isBarra=(mesa.zona||"").toLowerCase()==="barra";
-    document.getElementById("mAsignarTit").textContent=(isBarra?"🍺":"🪑")+" "+mesa.nombre+" — Asignar";
+    // Mesa libre → preguntar acción
     sesion.mesaId=mesaId;
-    document.getElementById("mAsignar").style.display="flex";
-    setTimeout(()=>document.getElementById("asignarN1").focus(),120);
+    var isBarra=(mesa.zona||"").toLowerCase()==="barra";
+    document.getElementById("mAccionTit").textContent=(isBarra?"🍺":"🪑")+" "+mesa.nombre+" — ¿Qué deseas hacer?";
+    document.getElementById("mAccionMesa").style.display="flex";
   } else {
-    // Mesa ocupada → abrir sesión
-    abrirSesionMesa(mesa,cuentas);
+    abrirSesionMesa(mesa, cuentas);
   }
+}
+
+function elegirAbrirCuenta(){
+  if(!verificarTurno()) return;
+  cerrarModal("mAccionMesa");
+  var mesa=mesas.find(x=>x.id===sesion.mesaId); if(!mesa) return;
+  tipoCuentaAsignar="individual"; nombresExtras=[];
+  selTipo("individual");
+  document.getElementById("asignarN1").value="";
+  document.getElementById("asignarN2").value="";
+  document.getElementById("asignarN3").value="";
+  document.getElementById("asignarNExtras").innerHTML="";
+  var isBarra=(mesa.zona||"").toLowerCase()==="barra";
+  document.getElementById("mAsignarTit").textContent=(isBarra?"🍺":"🪑")+" "+mesa.nombre;
+  document.getElementById("mAsignar").style.display="flex";
+  setTimeout(()=>document.getElementById("asignarN1").focus(),120);
+}
+
+async function elegirCobroInmediato(){
+  if(!verificarTurno()) return;
+  cerrarModal("mAccionMesa");
+  var mesa=mesas.find(x=>x.id===sesion.mesaId); if(!mesa) return;
+  // Abrir sesión con cuenta anónima "Cobro rápido"
+  var cuentas=[{id:uid(),nombre:"Cobro rápido",items:[],abierta_en:hora(),mesero:usuarioActual.nombre}];
+  await api("/mesas/"+sesion.mesaId,"PUT",{
+    estado:"ocupada",items:cuentas,
+    cajero_nombre:usuarioActual.nombre,cajero_email:usuarioActual.email
+  });
+  mesa.items=cuentas; mesa.estado="ocupada"; mesa.cajero_nombre=usuarioActual.nombre;
+  sesion={tipo:"mesa",mesaId:mesa.id,cuentas,subIdx:0,modoCuenta:"individual",cobroInmediato:true};
+  abrirSesionMesa(mesa,cuentas,"individual");
 }
 
 async function confirmarAsignar(){
@@ -1025,6 +1081,7 @@ function renderPedidoProds(){
 }
 
 async function addItem(prodId){
+  if(!verificarTurno()) return;
   var p=productos.find(x=>x.id===prodId); if(!p) return;
   var cuenta=sesion.cuentas[sesion.subIdx]; if(!cuenta) return;
   var ex=cuenta.items.find(x=>x.id===prodId);
@@ -1469,13 +1526,192 @@ async function renderTurno(){
   document.getElementById("pg-turno").innerHTML=html;
 }
 
-function mostrarCierre(){
-  var cuentasAbiertas=mesas.filter(x=>x.estado==="ocupada").length+getCuentasLibres().length;
-  var msg="¿Cerrar el turno '"+turnoActivo.nombre+"'?";
-  if(cuentasAbiertas>0) msg+="\n\n⚠️ Hay "+cuentasAbiertas+" cuenta(s) aún abiertas. Ciérralas antes o quedarán pendientes.";
-  msg+="\n\nVerifica el efectivo físico en caja antes de confirmar.";
-  if(!confirm(msg)) return;
-  cerrarTurno();
+async function mostrarCierre(){
+  // Construir resumen completo
+  var vs=await api("/ventas?fecha="+hoy()); if(!Array.isArray(vs)) vs=[];
+  var gs=await api("/gastos?fecha="+hoy()); if(!Array.isArray(gs)) gs=[];
+  var vsT=vs.filter(v=>v.turno_nom===turnoActivo.nombre);
+  var tv=vsT.reduce((s,v)=>s+Number(v.total||0),0);
+  var tg=gs.reduce((s,g)=>s+Number(g.monto||0),0);
+  var pm={};
+  vsT.forEach(v=>{ if(!pm[v.metodo])pm[v.metodo]=0; pm[v.metodo]+=Number(v.total||0); });
+  var efectivoVentas=pm["Efectivo"]||0;
+  var efectivoEsperado=Number(turnoActivo.caja_inicial)+efectivoVentas-tg;
+  var ganancia=tv-tg;
+
+  // Cuentas pendientes
+  var mesasOcup=mesas.filter(x=>x.estado==="ocupada");
+  var clLibres=getCuentasLibres();
+  var totalPendiente=0;
+  mesasOcup.forEach(m=>{ var cs=parseCuentasMesa(m); cs.forEach(c=>{ totalPendiente+=c.items.reduce((s,i)=>s+i.precio*i.cant,0); }); });
+  clLibres.forEach(cl=>{ cl.cuentas.forEach(c=>{ totalPendiente+=c.items.reduce((s,i)=>s+i.precio*i.cant,0); }); });
+
+  var html=`
+  <div class="kpi-grid" style="grid-template-columns:repeat(2,1fr)">
+    <div class="kpi morado"><small>💰 Total vendido</small><b style="color:var(--pri)">${fmt(tv)}</b></div>
+    <div class="kpi rojo"><small>💸 Total gastos</small><b style="color:var(--ng)">${fmt(tg)}</b></div>
+    <div class="kpi ${ganancia>=0?"verde":"rojo"}"><small>📊 Ganancia neta</small><b class="${ganancia>=0?"ganancia-pos":"ganancia-neg"}">${ganancia>=0?"+":""}${fmt(ganancia)}</b></div>
+    <div class="kpi amarillo"><small>💵 Efectivo esperado</small><b>${fmt(efectivoEsperado)}</b></div>
+  </div>
+
+  <div class="cierre-section">
+    <h4>💳 Ventas por método</h4>`;
+  Object.entries(pm).forEach(([k,v])=>{
+    var pct=tv>0?Math.round(v/tv*100):0;
+    html+=`<div class="pendiente-item"><span><b>${k}</b> <span style="color:var(--txt3)">${pct}%</span></span><span style="color:var(--ok);font-weight:800">${fmt(v)}</span></div>`;
+  });
+  if(!Object.keys(pm).length) html+=`<p style="font-size:12px;color:var(--txt3)">Sin ventas en este turno</p>`;
+  html+=`</div>
+
+  <div class="cierre-section">
+    <h4>💵 Conciliación de efectivo</h4>
+    <div class="pendiente-item"><span>Caja inicial</span><span>${fmt(turnoActivo.caja_inicial)}</span></div>
+    <div class="pendiente-item"><span>Ventas en efectivo</span><span style="color:var(--ok)">+ ${fmt(efectivoVentas)}</span></div>
+    <div class="pendiente-item"><span>Gastos</span><span style="color:var(--ng)">− ${fmt(tg)}</span></div>
+    <div class="${efectivoEsperado>=0?"efectivo-check":"efectivo-check efectivo-neg"}">
+      <b>Efectivo esperado en caja: ${fmt(efectivoEsperado)}</b><br/>
+      <span style="font-size:11px">Cuenta el efectivo físico y compara con este valor antes de confirmar</span>
+    </div>
+  </div>`;
+
+  if(gs.length){
+    html+=`<div class="cierre-section"><h4>💸 Gastos del turno</h4>`;
+    gs.forEach(g=>{ html+=`<div class="pendiente-item"><span>${g.categoria} · ${g.descripcion}</span><span style="color:var(--ng)">${fmt(g.monto)}</span></div>`; });
+    html+=`</div>`;
+  }
+
+  // Cuentas pendientes con botón cobrar
+  html+=`<div class="cierre-section">
+    <h4>📋 Cuentas pendientes ${(mesasOcup.length+clLibres.length)>0?`<span class="bdg br">${mesasOcup.length+clLibres.length} abiertas · ${fmt(totalPendiente)}</span>`:`<span class="bdg bg">✅ Ninguna</span>`}</h4>`;
+  mesasOcup.forEach(mesa=>{
+    var cs=parseCuentasMesa(mesa);
+    cs.forEach((c,ci)=>{
+      var tot=c.items.reduce((s,i)=>s+i.precio*i.cant,0);
+      html+=`<div class="pendiente-item">
+        <span>🪑 <b>${mesa.nombre}</b> · ${c.nombre} ${tot>0?"· "+fmt(tot):""}</span>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ok btn-sm" onclick="cobrarDesdeCierre('mesa',${mesa.id},${ci})">💰 Cobrar</button>
+          <button class="btn btn-ng btn-sm" onclick="cancelarDesdeCierre('mesa',${mesa.id},${ci})">✕</button>
+        </div>
+      </div>`;
+    });
+  });
+  clLibres.forEach(cl=>{
+    cl.cuentas.forEach((c,ci)=>{
+      var tot=c.items.reduce((s,i)=>s+i.precio*i.cant,0);
+      html+=`<div class="pendiente-item">
+        <span>👤 <b>${c.nombre}</b> (sin mesa) ${tot>0?"· "+fmt(tot):""}</span>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ok btn-sm" onclick="cobrarDesdeCierre('libre','${cl.id}',${ci})">💰 Cobrar</button>
+          <button class="btn btn-ng btn-sm" onclick="cancelarDesdeCierre('libre','${cl.id}',${ci})">✕</button>
+        </div>
+      </div>`;
+    });
+  });
+  if(!mesasOcup.length&&!clLibres.length) html+=`<p style="font-size:12px;color:var(--txt3)">✅ Todas las cuentas están cerradas</p>`;
+  html+=`</div>
+
+  <div style="background:var(--wnl);border:1px solid var(--wn);border-radius:10px;padding:12px;font-size:13px;color:var(--wdark);margin-top:8px">
+    ⚠️ Revisa cada cuenta pendiente antes de confirmar el cierre. Una vez cerrado el turno no se puede reabrir.
+  </div>`;
+
+  // Guardar datos para impresión
+  window._cierreData={turno:turnoActivo,tv,tg,ganancia,pm,efectivoVentas,efectivoEsperado,gs,fecha:hoy(),hora:hora()};
+
+  document.getElementById("cierreNomTurno").textContent=turnoActivo.nombre;
+  document.getElementById("cierreContenido").innerHTML=html;
+  document.getElementById("mCierre").style.display="flex";
+}
+
+function cobrarDesdeCierre(tipo,id,cuentaIdx){
+  cerrarModal("mCierre");
+  if(tipo==="mesa"){
+    var mesa=mesas.find(x=>x.id===id); if(!mesa) return;
+    var cuentas=parseCuentasMesa(mesa);
+    sesion={tipo:"mesa",mesaId:id,cuentas,subIdx:cuentaIdx,modoCuenta:cuentas.length>1?"multiple":"individual"};
+    abrirSesionMesa(mesa,cuentas,sesion.modoCuenta);
+  } else {
+    abrirSesionLibre(id);
+  }
+}
+
+async function cancelarDesdeCierre(tipo,id,cuentaIdx){
+  if(!confirm("¿Cancelar esta cuenta sin cobrar?")) return;
+  if(tipo==="mesa"){
+    var mesa=mesas.find(x=>x.id===id); if(!mesa) return;
+    var cuentas=parseCuentasMesa(mesa);
+    cuentas.splice(cuentaIdx,1);
+    var estado=cuentas.length?"ocupada":"libre";
+    await api("/mesas/"+id,"PUT",{estado,items:cuentas,cajero_nombre:cuentas.length?usuarioActual.nombre:null,cajero_email:cuentas.length?usuarioActual.email:null});
+    mesa.items=cuentas; mesa.estado=estado;
+  } else {
+    var libres=getCuentasLibres(); var cl=libres.find(x=>x.id===id); if(!cl) return;
+    cl.cuentas.splice(cuentaIdx,1);
+    if(!cl.cuentas.length) setCuentasLibres(libres.filter(x=>x.id!==id));
+    else setCuentasLibres(libres);
+  }
+  await cargarDatos();
+  mostrarCierre(); // refrescar modal
+}
+
+function imprimirCierre(){
+  var d=window._cierreData; if(!d) return;
+  var metodos=Object.entries(d.pm).map(([k,v])=>`<tr><td>${k}</td><td style="text-align:right">${fmt(v)}</td></tr>`).join("");
+  var gastos=d.gs.map(g=>`<tr><td>${g.categoria} · ${g.descripcion}</td><td style="text-align:right">${fmt(g.monto)}</td></tr>`).join("");
+  var html=`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Cierre ${d.turno.nombre}</title>
+  <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;font-size:12px;width:80mm;margin:0 auto;padding:8px;background:#fff;color:#000}
+  .c{text-align:center}.bn{font-size:15px;font-weight:900;margin-bottom:2px}.sep{border:none;border-top:1px dashed #999;margin:7px 0}
+  table{width:100%;border-collapse:collapse;font-size:11px;margin:4px 0}td{padding:3px 2px}
+  .tot td{border-top:2px solid #333;font-weight:900;font-size:13px;padding-top:5px}
+  h4{font-size:11px;font-weight:700;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.5px}
+  .pbtn{display:block;margin:10px auto 0;padding:8px 24px;font-size:13px;cursor:pointer;background:#6c5ce7;color:#fff;border:none;border-radius:8px}
+  @media print{.pbtn{display:none!important}}</style></head><body>
+  <div class="c"><div class="bn">${BAR_CFG.nombre}</div>
+  ${BAR_CFG.nit?`<div style="font-size:10px;color:#444">${BAR_CFG.nit}</div>`:""}
+  </div><hr class="sep"/>
+  <div class="c" style="font-size:13px;font-weight:700;margin-bottom:3px">CIERRE DE TURNO</div>
+  <div class="c" style="font-size:10px;color:#444">${d.turno.nombre} · ${fmtF(d.fecha)} · ${d.hora}</div>
+  <div class="c" style="font-size:10px;color:#444">Cajero: ${d.turno.cajero} · Apertura: ${d.turno.abierto_en}</div>
+  <hr class="sep"/>
+  <h4>Resumen</h4>
+  <table>
+    <tr><td>Total ventas</td><td style="text-align:right;font-weight:700">${fmt(d.tv)}</td></tr>
+    <tr><td>Total gastos</td><td style="text-align:right;color:#c00">− ${fmt(d.tg)}</td></tr>
+    <tr class="tot"><td>Ganancia neta</td><td style="text-align:right">${d.ganancia>=0?"+":""}${fmt(d.ganancia)}</td></tr>
+  </table>
+  <hr class="sep"/>
+  <h4>Ventas por método</h4>
+  <table>${metodos}</table>
+  <hr class="sep"/>
+  <h4>Conciliación de efectivo</h4>
+  <table>
+    <tr><td>Caja inicial</td><td style="text-align:right">${fmt(d.turno.caja_inicial)}</td></tr>
+    <tr><td>Ventas efectivo</td><td style="text-align:right">+ ${fmt(d.efectivoVentas)}</td></tr>
+    <tr><td>Gastos</td><td style="text-align:right">− ${fmt(d.tg)}</td></tr>
+    <tr class="tot"><td>Efectivo esperado</td><td style="text-align:right">${fmt(d.efectivoEsperado)}</td></tr>
+  </table>
+  ${gastos?`<hr class="sep"/><h4>Gastos</h4><table>${gastos}</table>`:""}
+  <hr class="sep"/>
+  <div class="c" style="font-size:10px;margin-top:4px">Firma cajero: ______________________</div>
+  <button class="pbtn" onclick="window.print()">🖨️ Imprimir</button>
+  <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`;
+  var win=window.open("","_blank","width=420,height=650");
+  if(!win){ alert("⚠️ Permite ventanas emergentes."); return; }
+  win.document.write(html); win.document.close();
+}
+
+async function confirmarCierreTurno(){
+  var pendientes=mesas.filter(x=>x.estado==="ocupada").length+getCuentasLibres().length;
+  if(pendientes>0){
+    if(!confirm(`⚠️ Aún hay ${pendientes} cuenta(s) pendiente(s).\n\n¿Cerrar el turno de todas formas? Las cuentas quedarán registradas como pendientes.`)) return;
+  }
+  cerrarModal("mCierre");
+  await api("/turnos/"+turnoActivo.id,"PUT",{estado:"cerrado",cerrado_en:hora()});
+  var d=window._cierreData;
+  // Mostrar resumen final
+  alert(`✅ Turno "${turnoActivo.nombre}" cerrado.\n\nVentas: ${fmt(d.tv)}\nGastos: ${fmt(d.tg)}\nGanancia neta: ${d.ganancia>=0?"+":""}${fmt(d.ganancia)}\nEfectivo esperado en caja: ${fmt(d.efectivoEsperado)}`);
+  turnoActivo=null; actualizarTurnoBadge(); renderTurno();
 }
 
 async function abrirTurno(){
