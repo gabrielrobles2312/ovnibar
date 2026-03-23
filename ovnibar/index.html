@@ -950,7 +950,8 @@ function abrirSesionLibre(clId){
   sesion={tipo:"libre",clId,cuentas:cl.cuentas,subIdx:0,modoCuenta:cl.modoCuenta};
   var nombres=cl.cuentas.map(c=>c.nombre).join(" · ");
   document.getElementById("mPedidoTit").textContent="👤 "+nombres;
-  document.getElementById("mPedidoInfo").textContent={{individual:"Individual",grupal:"Grupal",multiple:"Múltiple"}[cl.modoCuenta]+" · Barra / Sin mesa · "+usuarioActual.nombre+" · Desde "+cl.abierta_en};
+  var tipoLabel={individual:"Individual",grupal:"Grupal",multiple:"Múltiple"}[cl.modoCuenta]||"";
+  document.getElementById("mPedidoInfo").textContent=tipoLabel+" · Barra / Sin mesa · "+usuarioActual.nombre+" · Desde "+cl.abierta_en;
   document.getElementById("cuentasBarWrap").style.display=cl.modoCuenta==="multiple"?"block":"none";
   if(cl.modoCuenta==="multiple") renderCuentasBar();
   renderPedidoCats(); renderPedidoProds(); renderPedidoItems();
