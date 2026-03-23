@@ -1010,21 +1010,24 @@ async function confirmarCobro(){
     cajero:usuarioActual.nombre,cajero_email:usuarioActual.email,
     mesa_nom:mesaNom,desc_pct:desc,iva_pct:ivaPct,iva_monto:ivaMonto,comprobante
   });
-  // Eliminar la cuenta cobrada de la mesa
+  // Eliminar solo la cuenta cobrada de la mesa
   if(window._cobrandoMesaId){
     var mesaCob=mesas.find(x=>x.id===window._cobrandoMesaId);
     if(mesaCob){
-      var cuentas=getMesaCuentas(mesaCob);
-      var idx=window._cobrandoCuentaIdx||0;
-      var cuentaCobrada=cuentas[idx];
-      cuentas.splice(idx,1);
-      var nuevoEstado=cuentas.length?"ocupada":"libre";
+      // getMesaCuentas inline para evitar referencia fuera de orden
+      var rawC=Array.isArray(mesaCob.items)?mesaCob.items:JSON.parse(mesaCob.items||"[]");
+      var cuentasC=(rawC.length&&rawC[0]&&rawC[0].cuenta!==undefined)
+        ? rawC
+        : (rawC.length?[{cuenta:0,nombre:mesaCob.cajero_nombre||"Cuenta 1",items:rawC}]:[]);
+      var idxC=window._cobrandoCuentaIdx||0;
+      cuentasC.splice(idxC,1);
+      var nuevoEstadoC=cuentasC.length?"ocupada":"libre";
       await api("/mesas/"+window._cobrandoMesaId,"PUT",{
-        estado:nuevoEstado, items:cuentas,
-        cajero_nombre:cuentas.length?usuarioActual.nombre:null,
-        cajero_email:cuentas.length?usuarioActual.email:null
+        estado:nuevoEstadoC, items:cuentasC,
+        cajero_nombre:cuentasC.length?usuarioActual.nombre:null,
+        cajero_email:cuentasC.length?usuarioActual.email:null
       });
-      mesaCob.items=cuentas; mesaCob.estado=nuevoEstado;
+      mesaCob.items=cuentasC; mesaCob.estado=nuevoEstadoC;
     }
     window._cobrandoMesaId=null;
     window._cobrandoCuentaIdx=0;
